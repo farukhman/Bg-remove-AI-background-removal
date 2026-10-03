@@ -157,57 +157,57 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
     const strokeDashoffset = circumference - (circumference * Math.min(100, Math.max(0, progressPercent))) / 100;
 
     return (
-      <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white selection:bg-cyan-500 selection:text-white">
-        {/* Glow backdrop aura */}
+      <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-white via-blue-50/30 to-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
+        {/* Soft light glow backdrop aura */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative w-full max-w-lg bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-slate-700/60 shadow-2xl space-y-6 text-center">
+        <div className="relative w-full max-w-lg bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-[0_20px_50px_rgba(37,99,235,0.08)] space-y-6 text-center">
           
           {/* Top Pill / Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-semibold shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-semibold shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
             <span>@imgly Neural AI • High-Definition Segmentation</span>
           </div>
 
           {/* Interactive Scanning Picture HUD */}
           {uploadingImageUrl ? (
-            <div className="relative mx-auto max-w-[280px] sm:max-w-[320px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group bg-slate-950">
+            <div className="relative mx-auto max-w-[280px] sm:max-w-[320px] rounded-2xl overflow-hidden border-2 border-blue-100 shadow-lg group bg-slate-50 checkerboard-pattern">
               {/* Corner HUD brackets */}
-              <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400 z-20 pointer-events-none" />
-              <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400 z-20 pointer-events-none" />
-              <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400 z-20 pointer-events-none" />
-              <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400 z-20 pointer-events-none" />
+              <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-blue-600 z-20 pointer-events-none" />
+              <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-blue-600 z-20 pointer-events-none" />
+              <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-blue-600 z-20 pointer-events-none" />
+              <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-blue-600 z-20 pointer-events-none" />
 
               {/* Uploaded Image */}
               <img
                 src={uploadingImageUrl}
                 alt="Scanning..."
-                className="w-full h-auto max-h-[260px] object-contain mx-auto filter brightness-95"
+                className="w-full h-auto max-h-[260px] object-contain mx-auto"
               />
 
               {/* Laser Scanning Beam Sweeper */}
-              <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_18px_#22d3ee] animate-laser-scan z-10 pointer-events-none" />
+              <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-600 to-transparent shadow-[0_0_16px_#2563eb] animate-laser-scan z-10 pointer-events-none" />
 
               {/* Subtle Tech Grid Overlay */}
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.06)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none z-10" />
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(37,99,235,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(37,99,235,0.05)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none z-10" />
 
               {/* Status pill over image */}
-              <div className="absolute bottom-2 inset-x-3 z-20 bg-slate-950/80 backdrop-blur-md py-1 px-3 rounded-lg border border-slate-800 text-[11px] font-mono text-cyan-300 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+              <div className="absolute bottom-2.5 inset-x-3 z-20 bg-white/95 backdrop-blur-md py-1.5 px-3 rounded-xl border border-blue-100 shadow-md text-[11px] font-mono text-blue-700 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <Cpu className="w-3.5 h-3.5 text-blue-600 animate-spin" />
                   <span>Scanning Pixels...</span>
                 </span>
-                <span className="font-bold">{progressPercent}%</span>
+                <span className="font-bold text-blue-600">{progressPercent}%</span>
               </div>
             </div>
           ) : (
             /* Fallback Circular Ring Icon if image not yet loaded */
             <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20 animate-pulse-ring" />
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+              <div className="absolute inset-0 rounded-full border-4 border-blue-100 animate-pulse-ring" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
                 <Wand2 className="w-8 h-8 text-white animate-bounce" />
               </div>
             </div>
@@ -215,14 +215,14 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
           {/* Circular SVG Gauge & Percentage */}
           <div className="flex items-center justify-center gap-4 py-1">
-            <div className="relative w-20 h-20 flex items-center justify-center">
+            <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
               <svg className="w-20 h-20 -rotate-90 transform" viewBox="0 0 100 100">
                 {/* Background Ring */}
                 <circle
                   cx="50"
                   cy="50"
                   r={radius}
-                  className="stroke-slate-800"
+                  className="stroke-slate-100"
                   strokeWidth="8"
                   fill="transparent"
                 />
@@ -241,14 +241,14 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                 />
                 <defs>
                   <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38bdf8" />
-                    <stop offset="50%" stopColor="#06b6d4" />
+                    <stop offset="0%" stopColor="#2563eb" />
+                    <stop offset="50%" stopColor="#0ea5e9" />
                     <stop offset="100%" stopColor="#3b82f6" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-black tracking-tight text-white font-mono">
+                <span className="text-lg font-black tracking-tight text-blue-600 font-mono">
                   {progressPercent}%
                 </span>
               </div>
@@ -256,85 +256,85 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
             {/* Title & Status */}
             <div className="text-left space-y-1">
-              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                 <span>{progressPercent >= 100 ? 'Transparent PNG Ready!' : 'Analyzing Image...'}</span>
                 {progressPercent >= 100 ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 animate-bounce" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-bounce" />
                 ) : (
-                  <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
+                  <Sparkles className="w-4 h-4 text-blue-600 animate-spin" />
                 )}
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm font-medium leading-snug">
+              <p className="text-slate-500 text-xs sm:text-sm font-medium leading-snug">
                 {progressStatus || 'Preserving clothes, hair & fine edges...'}
               </p>
             </div>
           </div>
 
           {/* Real-time 3-Step Milestones */}
-          <div className="space-y-2 text-left bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+          <div className="space-y-2.5 text-left bg-slate-50/90 p-4 rounded-2xl border border-slate-200/80">
             {/* Step 1 */}
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                     progressPercent >= 30
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse'
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                      : 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
                   }`}
                 >
                   {progressPercent >= 30 ? '✓' : '1'}
                 </div>
-                <span className={progressPercent >= 30 ? 'text-slate-200 font-semibold' : 'text-slate-400'}>
+                <span className={progressPercent >= 30 ? 'text-slate-800 font-semibold' : 'text-slate-600'}>
                   Contour & Edge Detection
                 </span>
               </div>
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 30 ? 'text-emerald-600' : 'text-blue-600'}`}>
                 {progressPercent >= 30 ? 'Done' : 'Active'}
               </span>
             </div>
 
             {/* Step 2 */}
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                     progressPercent >= 85
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                       : progressPercent >= 30
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse'
-                      : 'bg-slate-800 text-slate-500'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
+                      : 'bg-slate-200/70 text-slate-500'
                   }`}
                 >
                   {progressPercent >= 85 ? '✓' : '2'}
                 </div>
-                <span className={progressPercent >= 85 ? 'text-slate-200 font-semibold' : progressPercent >= 30 ? 'text-cyan-300 font-medium' : 'text-slate-500'}>
+                <span className={progressPercent >= 85 ? 'text-slate-800 font-semibold' : progressPercent >= 30 ? 'text-blue-700 font-semibold' : 'text-slate-400'}>
                   AI Clothes & Hair Segmentation
                 </span>
               </div>
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 85 ? 'text-emerald-600' : progressPercent >= 30 ? 'text-blue-600' : 'text-slate-400'}`}>
                 {progressPercent >= 85 ? 'Done' : progressPercent >= 30 ? 'Processing' : 'Waiting'}
               </span>
             </div>
 
             {/* Step 3 */}
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                     progressPercent >= 100
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                       : progressPercent >= 85
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse'
-                      : 'bg-slate-800 text-slate-500'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
+                      : 'bg-slate-200/70 text-slate-500'
                   }`}
                 >
                   {progressPercent >= 100 ? '✓' : '3'}
                 </div>
-                <span className={progressPercent >= 100 ? 'text-emerald-400 font-bold' : progressPercent >= 85 ? 'text-cyan-300 font-medium' : 'text-slate-500'}>
+                <span className={progressPercent >= 100 ? 'text-emerald-700 font-bold' : progressPercent >= 85 ? 'text-blue-700 font-semibold' : 'text-slate-400'}>
                   Transparent PNG Extraction
                 </span>
               </div>
-              <span className="text-[11px] text-slate-500 font-mono">
+              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 100 ? 'text-emerald-600' : progressPercent >= 85 ? 'text-blue-600' : 'text-slate-400'}`}>
                 {progressPercent >= 100 ? 'Complete' : progressPercent >= 85 ? 'Extracting' : 'Waiting'}
               </span>
             </div>
@@ -342,18 +342,18 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
           {/* Celebratory Completion Alert */}
           {progressPercent >= 100 && (
-            <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-xl text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 animate-in fade-in duration-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-bold flex items-center justify-center gap-2 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>100% Complete! Opening in Transparent Editor...</span>
             </div>
           )}
 
           {/* Bottom Cancel / Back Button */}
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               type="button"
               onClick={onBackToHome}
-              className="text-xs text-slate-500 hover:text-slate-300 underline transition-colors cursor-pointer"
+              className="text-xs font-medium text-slate-400 hover:text-slate-700 underline transition-colors cursor-pointer"
             >
               Cancel & Upload Another Image
             </button>
