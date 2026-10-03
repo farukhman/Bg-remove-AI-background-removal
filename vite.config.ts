@@ -1,22 +1,37 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, Plugin} from 'vite';
+
+function optimizeOnnxPlugin(): Plugin {
+  return {
+    name: 'optimize-onnx-vite-ignore',
+    enforce: 'pre',
+    transform(code, id) {
+      if (id.includes('onnxruntime-web') && code.includes('webpackIgnore')) {
+        return {
+          code: code.replace(
+            /\/\*webpackIgnore:true\*\//g,
+            '/* @vite-ignore */ /*webpackIgnore:true*/'
+          ),
+          map: null,
+        };
+      }
+      return null;
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
     base: './',
-    plugins: [react(), tailwindcss()],
+    plugins: [optimizeOnnxPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
-        'onnxruntime-web/webgpu': path.resolve(
-          import.meta.dirname,
-          'node_modules/onnxruntime-web/dist/ort.webgpu.min.mjs'
-        ),
         'onnxruntime-web': path.resolve(
           import.meta.dirname,
-          'node_modules/onnxruntime-web/dist/ort.min.mjs'
+          'node_modules/onnxruntime-web/dist/ort.wasm.min.mjs'
         ),
       },
     },

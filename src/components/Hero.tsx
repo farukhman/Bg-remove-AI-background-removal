@@ -4,6 +4,7 @@ import { Language, translations } from '../utils/translations';
 import heroPortraitOriginal from '../assets/images/young_man_portrait_1790881396538.jpg';
 import heroPortraitCutout from '../assets/images/young_man_cutout.png';
 import sampleSneaker from '../assets/images/sneaker_product_1790881416163.jpg';
+import sneakerCutout from '../assets/images/sneaker_cutout.png';
 import userLogoAvatar from '../assets/images/user_logo_avatar.jpg';
 import userCutoutClean from '../assets/images/user_cutout_clean.png';
 
@@ -178,7 +179,7 @@ export const Hero: React.FC<HeroProps> = ({
                 </button>
 
                 <button
-                  onClick={() => onImageSelected(sampleSneaker, 'sneaker-shoe.jpg')}
+                  onClick={() => onImageSelected(sampleSneaker, 'sneaker-shoe.jpg', sneakerCutout)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:border-blue-500 hover:text-blue-600 text-xs font-semibold shadow-xs hover:shadow-sm transition-all"
                 >
                   <img

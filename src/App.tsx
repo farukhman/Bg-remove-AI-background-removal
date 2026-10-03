@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -11,6 +11,7 @@ import { Language } from './utils/translations';
 import {
   ProcessedResult,
   processBackgroundRemoval,
+  preloadBackgroundRemovalEngine,
   loadImage,
 } from './utils/backgroundRemoval';
 
@@ -25,6 +26,14 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Quietly warm up @imgly Web Worker in the background
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      preloadBackgroundRemovalEngine();
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Trigger file selection dialog
   const handleOpenUpload = () => {
