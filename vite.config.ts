@@ -10,6 +10,14 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
+        'onnxruntime-web/webgpu': path.resolve(
+          import.meta.dirname,
+          'node_modules/onnxruntime-web/dist/ort.webgpu.min.mjs'
+        ),
+        'onnxruntime-web': path.resolve(
+          import.meta.dirname,
+          'node_modules/onnxruntime-web/dist/ort.min.mjs'
+        ),
       },
     },
     server: {

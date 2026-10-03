@@ -103,68 +103,42 @@ export async function processBackgroundRemoval(
     onProgress?.(currentMaxPercent, statusText);
   };
 
-  updateProgress(25, 'Preparing image for @imgly neural processing...');
+  updateProgress(20, 'Preparing image for @imgly neural processing...');
   const optimizedBlob = await optimizeImageForProcessing(fileOrUrl, 1024);
 
-  // Convert blob to base64
-  const base64Data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(optimizedBlob);
+  updateProgress(35, 'Initializing @imgly AI engine...');
+
+  const cutoutBlob = await removeBackground(optimizedBlob, {
+    publicPath: IMGLY_CDN_PATH,
+    model: 'isnet_quint8',
+    device: 'cpu',
+    output: {
+      format: 'image/png',
+      quality: 1.0,
+    },
+    progress: (key: string, current: number, total: number) => {
+      if (total > 0) {
+        const ratio = Math.min(1, Math.max(0, current / total));
+        let mapped = 35;
+        let label = 'Processing AI segmentation...';
+
+        if (key.includes('wasm')) {
+          mapped = Math.round(35 + ratio * 20); // 35% -> 55%
+          label = `Loading @imgly AI engine: ${mapped}%`;
+        } else if (key.includes('model') || key.includes('isnet')) {
+          mapped = Math.round(55 + ratio * 32); // 55% -> 87%
+          label = `Analyzing subject & clothes: ${mapped}%`;
+        } else {
+          mapped = Math.round(87 + ratio * 8); // 87% -> 95%
+          label = `Extracting transparent edges: ${mapped}%`;
+        }
+
+        updateProgress(mapped, label);
+      }
+    },
   });
 
-  updateProgress(45, 'Processing with @imgly AI engine...');
-  let cutoutBlob: Blob | null = null;
-  let cutoutUrl: string | null = null;
-
-  // 1. Primary path: Call @imgly/background-removal-node backend (100% reliable on mobile, no browser WASM limits)
-  try {
-    updateProgress(55, 'Analyzing subject & clothes with @imgly...');
-    const response = await fetch('/api/remove-bg', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64Data }),
-    });
-
-    if (response.ok) {
-      updateProgress(85, 'Finalizing crisp transparent PNG...');
-      const data = await response.json();
-      if (data.cutoutUrl) {
-        cutoutUrl = data.cutoutUrl;
-        const res = await fetch(data.cutoutUrl);
-        cutoutBlob = await res.blob();
-      }
-    } else {
-      const errJson = await response.json().catch(() => ({}));
-      console.warn('Backend @imgly returned non-OK status:', errJson);
-    }
-  } catch (apiErr) {
-    console.warn('Backend @imgly request error, checking client engine fallback:', apiErr);
-  }
-
-  // 2. Client fallback if server route not reachable
-  if (!cutoutBlob || !cutoutUrl) {
-    updateProgress(65, 'Running client-side @imgly model...');
-    cutoutBlob = await removeBackground(optimizedBlob, {
-      publicPath: IMGLY_CDN_PATH,
-      model: 'isnet_quint8',
-      device: 'cpu',
-      output: {
-        format: 'image/png',
-        quality: 1.0,
-      },
-      progress: (key: string, current: number, total: number) => {
-        if (total > 0) {
-          const ratio = Math.min(1, Math.max(0, current / total));
-          const mapped = Math.round(65 + ratio * 28);
-          updateProgress(mapped, `Processing @imgly: ${mapped}%`);
-        }
-      },
-    });
-    cutoutUrl = URL.createObjectURL(cutoutBlob);
-  }
-
+  const cutoutUrl = URL.createObjectURL(cutoutBlob);
   onProgress?.(100, 'Background removed cleanly with @imgly!');
 
   return {
