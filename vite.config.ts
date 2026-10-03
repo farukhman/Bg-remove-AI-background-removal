@@ -26,6 +26,10 @@ export default defineConfig(() => {
   return {
     base: './',
     plugins: [optimizeOnnxPlugin(), react(), tailwindcss()],
+    worker: {
+      format: 'es',
+      plugins: () => [optimizeOnnxPlugin()],
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

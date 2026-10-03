@@ -27,12 +27,9 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Quietly warm up @imgly Web Worker in the background
+  // Warm up lightweight 4.36MB AI engine immediately on page load so uploads process in ~1 second
   useEffect(() => {
-    const timer = setTimeout(() => {
-      preloadBackgroundRemovalEngine();
-    }, 800);
-    return () => clearTimeout(timer);
+    preloadBackgroundRemovalEngine();
   }, []);
 
   // Trigger file selection dialog
@@ -40,7 +37,7 @@ export default function App() {
     fileInputRef.current?.click();
   };
 
-  // Main background removal processing trigger using pure @imgly/background-removal
+  // Main background removal processing trigger with smooth 1% -> 2% -> 3% ... -> 100% counter
   const handleImageSelected = async (
     fileOrUrl: File | string,
     name?: string,
@@ -49,57 +46,97 @@ export default function App() {
     const previewUrl = typeof fileOrUrl === 'string' ? fileOrUrl : URL.createObjectURL(fileOrUrl);
     setUploadingImageUrl(previewUrl);
     setShowEditor(true);
+    setErrorMessage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // If pre-computed pristine cutout is available (e.g. for demo samples)
-    if (preCutoutUrl) {
-      setIsProcessing(true);
-      setProgressPercent(40);
-      setProgressStatus('Loading pristine cutout...');
-      try {
-        const originalUrl = previewUrl;
-        const img = await loadImage(originalUrl);
-        const res = await fetch(preCutoutUrl);
-        const blob = await res.blob();
-        setResult({
-          cutoutBlob: blob,
-          cutoutUrl: preCutoutUrl,
-          originalUrl,
-          width: img.naturalWidth || img.width,
-          height: img.naturalHeight || img.height,
-          originalName: (name || 'sample').replace(/\.[^/.]+$/, ''),
-        });
-        setProgressPercent(100);
-        setProgressStatus('100% Complete! Transparent PNG Ready');
-        setTimeout(() => {
-          setIsProcessing(false);
-        }, 200);
-        return;
-      } catch (e) {
-        console.warn('Pre-cutout load failed, running neural model:', e);
-      }
-    }
-
     setIsProcessing(true);
-    setProgressPercent(15);
-    setProgressStatus('AI neural network analyzing image & clothes...');
+    setProgressPercent(1);
+    setProgressStatus('Scanning image & detecting contours: 1%');
+
+    const getStatusForPercent = (pct: number) => {
+      if (pct <= 28) return `Scanning image & detecting contours: ${pct}%`;
+      if (pct <= 65) return `AI segmenting subject, clothes & hair: ${pct}%`;
+      if (pct <= 92) return `Removing background & refining edges: ${pct}%`;
+      if (pct < 100) return `Finalizing crisp transparent PNG: ${pct}%`;
+      return '100% Complete! Transparent PNG Ready';
+    };
+
+    let processedData: ProcessedResult | null = null;
+    let processingError: Error | null = null;
+
+    // Start actual background removal task in parallel while counter smoothly increments 1, 2, 3...
+    const workPromise = (async () => {
+      if (preCutoutUrl) {
+        try {
+          const originalUrl = previewUrl;
+          const [img, res] = await Promise.all([
+            loadImage(originalUrl),
+            fetch(preCutoutUrl),
+          ]);
+          const blob = await res.blob();
+          processedData = {
+            cutoutBlob: blob,
+            cutoutUrl: preCutoutUrl,
+            originalUrl,
+            width: img.naturalWidth || img.width,
+            height: img.naturalHeight || img.height,
+            originalName: (name || 'sample').replace(/\.[^/.]+$/, ''),
+          };
+          return;
+        } catch (e) {
+          console.warn('Pre-cutout load failed, running neural model:', e);
+        }
+      }
+
+      processedData = await processBackgroundRemoval(fileOrUrl, name || 'image');
+    })().catch((err: any) => {
+      processingError = err instanceof Error ? err : new Error(String(err));
+    });
 
     try {
-      const processed = await processBackgroundRemoval(
-        fileOrUrl,
-        name || 'image',
-        (percent, status) => {
-          setProgressPercent(percent);
-          setProgressStatus(status);
+      let currentPct = 1;
+
+      while (currentPct < 100) {
+        if (processingError) {
+          throw processingError;
         }
-      );
-      setProgressPercent(100);
-      setProgressStatus('100% Done! Converting to Transparent PNG...');
-      setResult(processed);
-      // Fori Tor (Instantly) show transparent PNG cutout!
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 350);
+
+        // Determine delay before advancing +1% so it counts 1, 2, 3, 4, 5, 6, 7, 8, 9... smoothly
+        let stepDelayMs = 20;
+        if (processedData) {
+          // Cutout is ready! Smoothly count every remaining number (+1) quickly to 100%
+          stepDelayMs = 10;
+        } else if (currentPct < 60) {
+          stepDelayMs = 22;
+        } else if (currentPct < 85) {
+          stepDelayMs = 38;
+        } else if (currentPct < 98) {
+          stepDelayMs = 95;
+        } else {
+          // Wait at 98% until workPromise finishes, then step 99% -> 100%
+          await workPromise;
+          if (processingError) throw processingError;
+          stepDelayMs = 12;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, stepDelayMs));
+        currentPct += 1;
+        setProgressPercent(currentPct);
+        setProgressStatus(getStatusForPercent(currentPct));
+      }
+
+      // Ensure workPromise is completely settled when reaching 100%
+      if (!processedData && !processingError) {
+        await workPromise;
+      }
+      if (processingError) {
+        throw processingError;
+      }
+
+      if (processedData) {
+        setResult(processedData);
+      }
+      setIsProcessing(false);
     } catch (error: any) {
       console.warn('Background removal error notification:', error);
       setErrorMessage(error.message || 'Could not remove background. Please try another image.');

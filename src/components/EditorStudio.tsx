@@ -165,13 +165,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
         </div>
 
         <div className="relative w-full max-w-lg bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-[0_20px_50px_rgba(37,99,235,0.08)] space-y-6 text-center">
-          
-          {/* Top Pill / Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-semibold shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-            <span>@imgly Neural AI • High-Definition Segmentation</span>
-          </div>
-
           {/* Interactive Scanning Picture HUD */}
           {uploadingImageUrl ? (
             <div className="relative mx-auto max-w-[280px] sm:max-w-[320px] rounded-2xl overflow-hidden border-2 border-blue-100 shadow-lg group bg-slate-50 checkerboard-pattern">
@@ -237,7 +230,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   fill="transparent"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
-                  className="transition-all duration-300 ease-out"
+                  className="transition-all duration-75 ease-linear"
                 />
                 <defs>
                   <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
