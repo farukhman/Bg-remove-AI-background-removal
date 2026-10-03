@@ -1,0 +1,6 @@
+{
+  "name": "BG Remover - AI Background Removal",
+  "description": "Upload any image and remove the background instantly with advanced AI. Download crisp, transparent PNGs in high resolution for free.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
