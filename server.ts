@@ -11,6 +11,11 @@ const port = 3000;
 
 app.use(express.json({ limit: '50mb' }));
 
+// Google AdSense ads.txt verification endpoint
+app.get('/ads.txt', (_req, res) => {
+  res.type('text/plain').send('google.com, pub-4877310265134435, DIRECT, f08c47fec0942fa0\n');
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
