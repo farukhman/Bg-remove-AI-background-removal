@@ -28,7 +28,6 @@ import {
   copyImageToClipboard,
   loadImage,
 } from '../utils/backgroundRemoval';
-import { ProcessingAdBanner, DownloadVideoAdModal } from './AdComponents';
 
 interface EditorStudioProps {
   currentLang: Language;
@@ -57,8 +56,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showDownloadAdModal, setShowDownloadAdModal] = useState(false);
-  const [pendingDownloadFormat, setPendingDownloadFormat] = useState<'png' | 'jpg'>('png');
 
   // Background settings
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>({
@@ -89,17 +86,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
     }
   };
 
-  // Download button trigger -> Opens the 10-second YouTube-style Video Ad popup first
-  const handleDownload = (format: 'png' | 'jpg') => {
+  // Direct instant download without ads
+  const handleDownload = async (format: 'png' | 'jpg') => {
     if (!result) return;
-    setPendingDownloadFormat(format);
-    setShowDownloadAdModal(true);
-  };
-
-  // Actual download after user clicks "Skip Ad" (after 10 seconds)
-  const executeActualDownload = async () => {
-    if (!result) return;
-    setShowDownloadAdModal(false);
     setIsDownloading(true);
     try {
       await downloadImage(
@@ -107,7 +96,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
         result.originalUrl,
         bgSettings,
         result.originalName,
-        pendingDownloadFormat
+        format
       );
     } catch (err) {
       console.error('Download error:', err);
@@ -351,9 +340,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               <span>100% Complete! Opening in Transparent Editor...</span>
             </div>
           )}
-
-          {/* Ad Placement #1: Runs while picture is uploading & processing */}
-          <ProcessingAdBanner />
 
           {/* Bottom Cancel / Back Button */}
           <div className="pt-1">
@@ -884,14 +870,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
         </div>
 
       </div>
-
-      {/* Ad Placement #2: Compact Video Ad Modal ("Choti Screen") with 10s YouTube-Style Skip Ad */}
-      <DownloadVideoAdModal
-        isOpen={showDownloadAdModal}
-        format={pendingDownloadFormat}
-        onCompleteDownload={executeActualDownload}
-        onClose={() => setShowDownloadAdModal(false)}
-      />
     </div>
   );
 };

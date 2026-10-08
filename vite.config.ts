@@ -27,7 +27,7 @@ export default defineConfig(() => {
     base: './',
     plugins: [optimizeOnnxPlugin(), react(), tailwindcss()],
     worker: {
-      format: 'es',
+      format: 'es' as const,
       plugins: () => [optimizeOnnxPlugin()],
     },
     resolve: {

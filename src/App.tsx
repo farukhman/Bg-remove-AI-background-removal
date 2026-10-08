@@ -65,6 +65,7 @@ export default function App() {
     let processingError: Error | null = null;
 
     // Start actual background removal task in parallel while counter smoothly increments 1, 2, 3...
+    let isTaskDone = false;
     const workPromise = (async () => {
       if (preCutoutUrl) {
         try {
@@ -82,14 +83,19 @@ export default function App() {
             height: img.naturalHeight || img.height,
             originalName: (name || 'sample').replace(/\.[^/.]+$/, ''),
           };
+          isTaskDone = true;
           return;
         } catch (e) {
           console.warn('Pre-cutout load failed, running neural model:', e);
         }
       }
 
-      processedData = await processBackgroundRemoval(fileOrUrl, name || 'image');
+      processedData = await processBackgroundRemoval(fileOrUrl, name || 'image', (pct, status) => {
+        if (status) setProgressStatus(status);
+      });
+      isTaskDone = true;
     })().catch((err: any) => {
+      isTaskDone = true;
       processingError = err instanceof Error ? err : new Error(String(err));
     });
 
@@ -101,22 +107,19 @@ export default function App() {
           throw processingError;
         }
 
-        // Determine delay before advancing +1% so it counts 1, 2, 3, 4, 5, 6, 7, 8, 9... smoothly
-        let stepDelayMs = 20;
-        if (processedData) {
-          // Cutout is ready! Smoothly count every remaining number (+1) quickly to 100%
-          stepDelayMs = 10;
-        } else if (currentPct < 60) {
-          stepDelayMs = 22;
-        } else if (currentPct < 85) {
-          stepDelayMs = 38;
-        } else if (currentPct < 98) {
-          stepDelayMs = 95;
+        let stepDelayMs = 18;
+        if (isTaskDone && processedData) {
+          // Processed result is ready! Quickly count up to 100% with zero lag
+          stepDelayMs = 8;
+        } else if (currentPct < 70) {
+          stepDelayMs = 20;
+        } else if (currentPct < 90) {
+          stepDelayMs = 35;
+        } else if (currentPct < 96) {
+          stepDelayMs = 60;
         } else {
-          // Wait at 98% until workPromise finishes, then step 99% -> 100%
-          await workPromise;
-          if (processingError) throw processingError;
-          stepDelayMs = 12;
+          // Beyond 96%, step gently without freezing until work settles
+          stepDelayMs = 80;
         }
 
         await new Promise((resolve) => setTimeout(resolve, stepDelayMs));
@@ -125,8 +128,8 @@ export default function App() {
         setProgressStatus(getStatusForPercent(currentPct));
       }
 
-      // Ensure workPromise is completely settled when reaching 100%
-      if (!processedData && !processingError) {
+      // Ensure background removal has resolved
+      if (!isTaskDone) {
         await workPromise;
       }
       if (processingError) {
