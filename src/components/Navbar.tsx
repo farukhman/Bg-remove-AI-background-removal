@@ -25,16 +25,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Brand Logo with Circular BG Remove Emblem */}
+        {/* Brand Logo with Perfectly Circular BG Remove Emblem */}
         <div 
           onClick={() => onNavClick('home')}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="relative w-12 h-12 rounded-full group-hover:scale-105 transition-all duration-200">
+          <div className="relative w-12 h-12 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-blue-600 to-sky-400 ring-2 ring-blue-500/20 group-hover:scale-105 transition-all duration-200 shadow-xs flex items-center justify-center">
             <img
               src={bgRemoveLogo}
               alt="BG Remove Logo"
-              className="w-full h-full rounded-full object-contain drop-shadow-sm"
+              className="w-full h-full rounded-full object-cover"
             />
           </div>
           <div className="flex items-baseline gap-1 text-2xl font-extrabold tracking-tight">

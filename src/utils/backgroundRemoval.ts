@@ -45,12 +45,21 @@ export function preloadBackgroundRemovalEngine(): void {
  * - Smooth anti-aliased alpha matting and full-resolution hardware upscale
  * - Prevents UI freezing and never hangs at 98%
  */
+/**
+ * Ultra-smooth, high-precision image segmentation and edge refinement engine
+ * - 800px high-definition analysis grid for crisp contour tracking without pixelation
+ * - 8-connected gradient-weighted flood-fill to prevent staircase aliasing
+ * - Morphological regularization to eliminate saw-tooth spikes and jagged teeth
+ * - Separable Gaussian anti-aliasing filter for silky continuous alpha edges
+ * - Color defringing / decontamination to eliminate halos
+ * - High-quality bicubic alpha mask upscaling to 100% native resolution
+ */
 function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement {
   const origW = sourceImg.naturalWidth || sourceImg.width;
   const origH = sourceImg.naturalHeight || sourceImg.height;
 
-  // 1. Scaled analysis grid (max 480px for instantaneous, zero-lag calculation)
-  const maxDim = 480;
+  // 1. High-resolution analysis grid (800px max dimension for smooth curves without lag)
+  const maxDim = 800;
   let anaW = origW;
   let anaH = origH;
   if (anaW > maxDim || anaH > maxDim) {
@@ -73,9 +82,9 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
   const data = imgData.data;
   const totalPixels = anaW * anaH;
 
-  // 2. Collect border color samples from all 4 edges and corners
+  // 2. Dense border color sampling from all 4 boundaries and corners
   const borderSamples: [number, number, number][] = [];
-  const sampleStep = Math.max(1, Math.floor(Math.min(anaW, anaH) / 36));
+  const sampleStep = Math.max(1, Math.floor(Math.min(anaW, anaH) / 48));
 
   for (let x = 0; x < anaW; x += sampleStep) {
     const topIdx = (0 * anaW + x) * 4;
@@ -90,16 +99,15 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
     borderSamples.push([data[rightIdx], data[rightIdx + 1], data[rightIdx + 2]]);
   }
 
-  // 3. Cluster border colors into background color centroids using K-means
-  const k = Math.min(5, Math.max(2, Math.floor(borderSamples.length / 8)));
+  // 3. Cluster border colors into background color centroids using K-means (K=5)
+  const k = Math.min(5, Math.max(2, Math.floor(borderSamples.length / 10)));
   const centroids: [number, number, number][] = [];
   for (let i = 0; i < k; i++) {
     const sIdx = Math.floor((i * borderSamples.length) / k);
     centroids.push([...borderSamples[sIdx]]);
   }
 
-  // 3 quick iterations
-  for (let iter = 0; iter < 3; iter++) {
+  for (let iter = 0; iter < 4; iter++) {
     const sums = centroids.map(() => [0, 0, 0, 0]);
     for (const [r, g, b] of borderSamples) {
       let minDist = Infinity;
@@ -126,48 +134,47 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
     }
   }
 
-  // Perceptual color distance helper
-  const colorDist = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
-    const dr = r1 - r2;
-    const dg = g1 - g2;
-    const db = b1 - b2;
-    return Math.sqrt(0.299 * dr * dr + 0.587 * dg * dg + 0.114 * db * db);
-  };
-
-  const minCentroidDist = (r: number, g: number, b: number): number => {
+  // Perceptual color distance function
+  const distToBg = (r: number, g: number, b: number): number => {
     let minD = Infinity;
     for (const [cr, cg, cb] of centroids) {
-      const d = colorDist(r, g, b, cr, cg, cb);
-      if (d < minD) minD = d;
+      const dr = r - cr;
+      const dg = g - cg;
+      const db = b - cb;
+      // Perceptual Euclidean distance with max channel contrast
+      const eul = Math.sqrt(0.299 * dr * dr + 0.587 * dg * dg + 0.114 * db * db);
+      const maxDelta = Math.max(Math.abs(dr), Math.abs(dg), Math.abs(db));
+      const combined = eul * 0.75 + maxDelta * 0.25;
+      if (combined < minD) minD = combined;
     }
     return minD;
   };
 
-  // 4. Compute Sobel Edge Gradient Map (protects subject contours)
+  // 4. Compute Sobel Edge Gradient Map (smooth gradient barrier)
   const gray = new Uint8Array(totalPixels);
   for (let i = 0; i < totalPixels; i++) {
     const p = i * 4;
-    gray[i] = Math.round(0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]);
+    gray[i] = (data[p] * 77 + data[p + 1] * 150 + data[p + 2] * 29) >> 8;
   }
 
   const edges = new Uint8Array(totalPixels);
   for (let y = 1; y < anaH - 1; y++) {
     const row = y * anaW;
-    const rowPrev = (y - 1) * anaW;
-    const rowNext = (y + 1) * anaW;
+    const prev = (y - 1) * anaW;
+    const next = (y + 1) * anaW;
     for (let x = 1; x < anaW - 1; x++) {
       const gx =
-        -gray[rowPrev + x - 1] + gray[rowPrev + x + 1] -
+        -gray[prev + x - 1] + gray[prev + x + 1] -
         2 * gray[row + x - 1] + 2 * gray[row + x + 1] -
-        gray[rowNext + x - 1] + gray[rowNext + x + 1];
+        gray[next + x - 1] + gray[next + x + 1];
       const gy =
-        -gray[rowPrev + x - 1] - 2 * gray[rowPrev + x] - gray[rowPrev + x + 1] +
-        gray[rowNext + x - 1] + 2 * gray[rowNext + x] + gray[rowNext + x + 1];
+        -gray[prev + x - 1] - 2 * gray[prev + x] - gray[prev + x + 1] +
+        gray[next + x - 1] + 2 * gray[next + x] + gray[next + x + 1];
       edges[row + x] = Math.min(255, Math.abs(gx) + Math.abs(gy));
     }
   }
 
-  // 5. Border Flood Fill with Edge Barrier & Saliency
+  // 5. 8-Connected Flood Fill with Gradient-Weighted Smooth Barrier
   const isBg = new Uint8Array(totalPixels);
   const queue = new Int32Array(totalPixels);
   let qHead = 0;
@@ -175,29 +182,29 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
 
   const baseTol = 38;
 
-  const checkAndSeed = (idx: number) => {
+  const seed = (idx: number) => {
     const r = data[idx * 4];
     const g = data[idx * 4 + 1];
     const b = data[idx * 4 + 2];
-    if (minCentroidDist(r, g, b) < baseTol * 1.3) {
+    if (distToBg(r, g, b) < baseTol * 1.35) {
       isBg[idx] = 1;
       queue[qTail++] = idx;
     }
   };
 
   for (let x = 0; x < anaW; x++) {
-    checkAndSeed(0 * anaW + x);
-    checkAndSeed((anaH - 1) * anaW + x);
+    seed(0 * anaW + x);
+    seed((anaH - 1) * anaW + x);
   }
   for (let y = 1; y < anaH - 1; y++) {
-    checkAndSeed(y * anaW + 0);
-    checkAndSeed(y * anaW + (anaW - 1));
+    seed(y * anaW + 0);
+    seed(y * anaW + (anaW - 1));
   }
 
-  // Saliency core bounds
-  const coreXMin = anaW * 0.22;
-  const coreXMax = anaW * 0.78;
-  const coreYMin = anaH * 0.18;
+  // Central saliency zone
+  const coreXMin = anaW * 0.20;
+  const coreXMax = anaW * 0.80;
+  const coreYMin = anaH * 0.15;
   const coreYMax = anaH * 0.85;
 
   while (qHead < qTail) {
@@ -205,30 +212,33 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
     const cx = curr % anaW;
     const cy = Math.floor(curr / anaW);
 
+    // 8-way neighbors to avoid staircase zig-zags
     const neighbors = [
       cx > 0 ? curr - 1 : -1,
       cx < anaW - 1 ? curr + 1 : -1,
       cy > 0 ? curr - anaW : -1,
       cy < anaH - 1 ? curr + anaW : -1,
+      cx > 0 && cy > 0 ? curr - anaW - 1 : -1,
+      cx < anaW - 1 && cy > 0 ? curr - anaW + 1 : -1,
+      cx > 0 && cy < anaH - 1 ? curr + anaW - 1 : -1,
+      cx < anaW - 1 && cy < anaH - 1 ? curr + anaW + 1 : -1,
     ];
 
     for (const n of neighbors) {
       if (n !== -1 && isBg[n] === 0) {
-        // Strong edge barrier prevents bleeding into subject
-        if (edges[n] > 40) {
-          continue;
-        }
-
         const nx = n % anaW;
         const ny = Math.floor(n / anaW);
         const inCore = nx >= coreXMin && nx <= coreXMax && ny >= coreYMin && ny <= coreYMax;
-        const tol = inCore ? baseTol * 0.82 : baseTol;
+        
+        // Smooth gradient resistance curve (no abrupt cliff)
+        const edgePenalty = Math.min(26, edges[n] * 0.38);
+        const effectiveTol = Math.max(12, (inCore ? baseTol * 0.85 : baseTol) - edgePenalty);
 
         const nr = data[n * 4];
         const ng = data[n * 4 + 1];
         const nb = data[n * 4 + 2];
 
-        if (minCentroidDist(nr, ng, nb) < tol) {
+        if (distToBg(nr, ng, nb) < effectiveTol) {
           isBg[n] = 1;
           queue[qTail++] = n;
         }
@@ -236,37 +246,95 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
     }
   }
 
-  // 6. Smooth Alpha Matting & Edge Feathering
-  const alphaMatte = new Uint8ClampedArray(totalPixels);
-  for (let i = 0; i < totalPixels; i++) {
-    alphaMatte[i] = isBg[i] === 1 ? 0 : 255;
+  // 6. Morphological Regularization (Eliminates saw-tooth spikes & jagged teeth)
+  const regMask = new Uint8Array(totalPixels);
+  for (let y = 1; y < anaH - 1; y++) {
+    const row = y * anaW;
+    for (let x = 1; x < anaW - 1; x++) {
+      let bgCount = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (isBg[(y + dy) * anaW + (x + dx)] === 1) bgCount++;
+        }
+      }
+      regMask[row + x] = bgCount >= 5 ? 1 : 0;
+    }
   }
 
+  // 7. Continuous Distance-Based Sub-Pixel Alpha & Boundary Zone
+  const rawAlpha = new Float32Array(totalPixels);
   for (let y = 1; y < anaH - 1; y++) {
     const row = y * anaW;
     for (let x = 1; x < anaW - 1; x++) {
       const idx = row + x;
-      if (isBg[idx] === 1) {
-        data[idx * 4 + 3] = 0;
+      if (regMask[idx] === 1) {
+        rawAlpha[idx] = 0;
       } else {
         const hasBg =
-          isBg[idx - 1] === 1 ||
-          isBg[idx + 1] === 1 ||
-          isBg[idx - anaW] === 1 ||
-          isBg[idx + anaW] === 1;
+          regMask[idx - 1] === 1 || regMask[idx + 1] === 1 ||
+          regMask[idx - anaW] === 1 || regMask[idx + anaW] === 1 ||
+          regMask[idx - anaW - 1] === 1 || regMask[idx - anaW + 1] === 1 ||
+          regMask[idx + anaW - 1] === 1 || regMask[idx + anaW + 1] === 1;
+
         if (hasBg) {
-          const d = minCentroidDist(data[idx * 4], data[idx * 4 + 1], data[idx * 4 + 2]);
-          data[idx * 4 + 3] = Math.min(255, Math.max(120, Math.round(d * 4.5)));
+          const d = distToBg(data[idx * 4], data[idx * 4 + 1], data[idx * 4 + 2]);
+          // Smooth sigmoid curve for continuous sub-pixel boundary feathering
+          const ratio = Math.min(1, Math.max(0, d / (d + 18)));
+          rawAlpha[idx] = ratio * 255;
         } else {
-          data[idx * 4 + 3] = 255;
+          rawAlpha[idx] = 255;
         }
       }
     }
   }
 
+  // 8. Separable Gaussian Feathering Filter (Radius 2, Sigma 1.2)
+  // Transforms discrete pixel boundaries into continuous silky-smooth gradients
+  const kernel = [0.06136, 0.24477, 0.38774, 0.24477, 0.06136];
+  const tempAlpha = new Float32Array(totalPixels);
+  const finalAlpha = new Uint8ClampedArray(totalPixels);
+
+  // Horizontal blur pass
+  for (let y = 0; y < anaH; y++) {
+    const row = y * anaW;
+    for (let x = 2; x < anaW - 2; x++) {
+      let sum = 0;
+      for (let k = -2; k <= 2; k++) {
+        sum += rawAlpha[row + x + k] * kernel[k + 2];
+      }
+      tempAlpha[row + x] = sum;
+    }
+  }
+
+  // Vertical blur pass + edge defringing
+  const primaryBg = centroids[0] || [255, 255, 255];
+  for (let y = 2; y < anaH - 2; y++) {
+    for (let x = 2; x < anaW - 2; x++) {
+      const idx = y * anaW + x;
+      let sum = 0;
+      for (let k = -2; k <= 2; k++) {
+        sum += tempAlpha[(y + k) * anaW + x] * kernel[k + 2];
+      }
+      const alphaVal = Math.round(sum);
+      finalAlpha[idx] = alphaVal;
+
+      const p4 = idx * 4;
+      data[p4 + 3] = alphaVal;
+
+      // Color defringing on edge transitions (removes halo)
+      if (alphaVal > 0 && alphaVal < 240) {
+        const factor = alphaVal / 255;
+        data[p4] = Math.min(255, Math.max(0, Math.round((data[p4] - primaryBg[0] * (1 - factor)) / Math.max(0.1, factor))));
+        data[p4 + 1] = Math.min(255, Math.max(0, Math.round((data[p4 + 1] - primaryBg[1] * (1 - factor)) / Math.max(0.1, factor))));
+        data[p4 + 2] = Math.min(255, Math.max(0, Math.round((data[p4 + 2] - primaryBg[2] * (1 - factor)) / Math.max(0.1, factor))));
+      }
+    }
+  }
+
+  // 9. Put smooth anti-aliased data onto alpha mask canvas
   anaCtx.putImageData(imgData, 0, 0);
 
-  // 7. Upscale alpha mask to full original resolution onto output canvas
+  // 10. Upscale smooth anti-aliased mask to 100% native resolution
   const outCanvas = document.createElement('canvas');
   outCanvas.width = origW;
   outCanvas.height = origH;
@@ -275,6 +343,7 @@ function createLocalCutoutCanvas(sourceImg: HTMLImageElement): HTMLCanvasElement
   outCtx.imageSmoothingEnabled = true;
   outCtx.imageSmoothingQuality = 'high';
 
+  // Draw full-resolution source image, then composite smoothly anti-aliased alpha mask
   outCtx.drawImage(sourceImg, 0, 0, origW, origH);
   outCtx.globalCompositeOperation = 'destination-in';
   outCtx.drawImage(anaCanvas, 0, 0, origW, origH);

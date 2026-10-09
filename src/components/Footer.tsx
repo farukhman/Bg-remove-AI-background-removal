@@ -1,7 +1,6 @@
 import React from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, Sparkles } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
-import bgRemoveLogo from '../assets/images/bg_remove_circular_logo.png';
 
 interface FooterProps {
   currentLang: Language;
@@ -18,14 +17,10 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onNavClick }) => {
         {/* Top footer row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800/80">
           
-          {/* Logo & Tagline with Circular Emblem */}
+          {/* Logo & Tagline - Clean modern brand header without website image logo */}
           <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-full">
-              <img
-                src={bgRemoveLogo}
-                alt="BG Remove Logo"
-                className="w-full h-full rounded-full object-contain drop-shadow-sm"
-              />
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <Sparkles className="w-5 h-5 text-blue-400" />
             </div>
             <div className="flex items-baseline gap-1 text-xl font-extrabold tracking-tight">
               <span className="text-blue-400">BG</span>
