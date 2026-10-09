@@ -1,13 +1,14 @@
 import React from 'react';
-import { Upload, Cpu, Download, ArrowRight } from 'lucide-react';
+import { Upload, Cpu, Download, ArrowRight, ArrowLeft, Wand2 } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
 
 interface HowItWorksProps {
   currentLang: Language;
   onUploadClick: () => void;
+  onBackToHome?: () => void;
 }
 
-export const HowItWorks: React.FC<HowItWorksProps> = ({ currentLang, onUploadClick }) => {
+export const HowItWorks: React.FC<HowItWorksProps> = ({ currentLang, onUploadClick, onBackToHome }) => {
   const t = translations[currentLang];
 
   const steps = [
@@ -35,13 +36,27 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ currentLang, onUploadCli
   ];
 
   return (
-    <section id="how-it-works" className="py-20 bg-slate-50/60">
+    <div className="py-12 sm:py-20 bg-slate-50/60 min-h-[75vh]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+        {/* Navigation Breadcrumb / Back button */}
+        {onBackToHome && (
+          <div className="mb-8">
+            <button
+              onClick={onBackToHome}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 px-4 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Home</span>
+            </button>
+          </div>
+        )}
+
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold tracking-wide">
-            {t.howItWorks.badge}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold tracking-wide">
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>{t.howItWorks.badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             {t.howItWorks.title}
@@ -101,6 +116,6 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ currentLang, onUploadCli
         </div>
 
       </div>
-    </section>
+    </div>
   );
 };

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Globe, ChevronDown, Check, Sparkles, Menu, X } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
-import farukhAliLogo from '../assets/images/farukh_ali_brand_logo_cutout.png';
+import bgRemoveLogo from '../assets/images/bg_remove_circular_logo.png';
 
 interface NavbarProps {
   currentLang: Language;
+  activePage?: string;
   onLanguageChange: (lang: Language) => void;
   onSelectUpload: () => void;
   onNavClick: (sectionId: string) => void;
@@ -12,6 +13,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentLang,
+  activePage = 'home',
   onLanguageChange,
   onSelectUpload,
   onNavClick,
@@ -23,21 +25,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Brand Logo with Farukh Ali Circular Badge */}
+        {/* Brand Logo with Circular BG Remove Emblem */}
         <div 
           onClick={() => onNavClick('home')}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-rose-300 to-amber-500 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-all duration-200">
+          <div className="relative w-12 h-12 rounded-full group-hover:scale-105 transition-all duration-200">
             <img
-              src={farukhAliLogo}
-              alt="Farukh Ali Logo"
-              className="w-full h-full rounded-full object-cover object-center ring-1 ring-white/90 bg-slate-900"
+              src={bgRemoveLogo}
+              alt="BG Remove Logo"
+              className="w-full h-full rounded-full object-contain drop-shadow-sm"
             />
           </div>
           <div className="flex items-baseline gap-1 text-2xl font-extrabold tracking-tight">
             <span className="text-blue-600">BG</span>
-            <span className="text-slate-900">Remover</span>
+            <span className="text-slate-900">Remove</span>
           </div>
         </div>
 
@@ -45,28 +47,47 @@ export const Navbar: React.FC<NavbarProps> = ({
         <nav className="hidden md:flex items-center gap-8">
           <button
             onClick={() => onNavClick('home')}
-            className="text-slate-900 font-semibold text-sm relative py-2 transition-colors hover:text-blue-600"
+            className={`font-semibold text-sm relative py-2 transition-colors cursor-pointer ${
+              activePage === 'home' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'
+            }`}
           >
             {t.nav.home}
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            {activePage === 'home' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            )}
           </button>
           <button
             onClick={() => onNavClick('how-it-works')}
-            className="text-slate-600 font-medium text-sm py-2 hover:text-blue-600 transition-colors"
+            className={`font-semibold text-sm relative py-2 transition-colors cursor-pointer ${
+              activePage === 'how-it-works' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'
+            }`}
           >
             {t.nav.howItWorks}
+            {activePage === 'how-it-works' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            )}
           </button>
           <button
             onClick={() => onNavClick('features')}
-            className="text-slate-600 font-medium text-sm py-2 hover:text-blue-600 transition-colors"
+            className={`font-semibold text-sm relative py-2 transition-colors cursor-pointer ${
+              activePage === 'features' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'
+            }`}
           >
             {t.nav.features}
+            {activePage === 'features' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            )}
           </button>
           <button
             onClick={() => onNavClick('faq')}
-            className="text-slate-600 font-medium text-sm py-2 hover:text-blue-600 transition-colors"
+            className={`font-semibold text-sm relative py-2 transition-colors cursor-pointer ${
+              activePage === 'faq' ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'
+            }`}
           >
             {t.nav.faq}
+            {activePage === 'faq' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            )}
           </button>
         </nav>
 
@@ -142,13 +163,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-100 bg-white px-4 pt-3 pb-6 space-y-3">
+        <div className="md:hidden border-t border-slate-100 bg-white px-4 pt-3 pb-6 space-y-2">
           <button
             onClick={() => {
               onNavClick('home');
               setMobileMenuOpen(false);
             }}
-            className="block w-full text-left font-semibold text-blue-600 py-2"
+            className={`block w-full text-left font-semibold py-2.5 px-3 rounded-xl transition-colors ${
+              activePage === 'home'
+                ? 'text-blue-600 bg-blue-50 font-bold'
+                : 'text-slate-700 hover:bg-slate-50'
+            }`}
           >
             {t.nav.home}
           </button>
@@ -157,7 +182,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onNavClick('how-it-works');
               setMobileMenuOpen(false);
             }}
-            className="block w-full text-left text-slate-700 py-2"
+            className={`block w-full text-left font-semibold py-2.5 px-3 rounded-xl transition-colors ${
+              activePage === 'how-it-works'
+                ? 'text-blue-600 bg-blue-50 font-bold'
+                : 'text-slate-700 hover:bg-slate-50'
+            }`}
           >
             {t.nav.howItWorks}
           </button>
@@ -166,7 +195,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onNavClick('features');
               setMobileMenuOpen(false);
             }}
-            className="block w-full text-left text-slate-700 py-2"
+            className={`block w-full text-left font-semibold py-2.5 px-3 rounded-xl transition-colors ${
+              activePage === 'features'
+                ? 'text-blue-600 bg-blue-50 font-bold'
+                : 'text-slate-700 hover:bg-slate-50'
+            }`}
           >
             {t.nav.features}
           </button>
@@ -175,7 +208,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onNavClick('faq');
               setMobileMenuOpen(false);
             }}
-            className="block w-full text-left text-slate-700 py-2"
+            className={`block w-full text-left font-semibold py-2.5 px-3 rounded-xl transition-colors ${
+              activePage === 'faq'
+                ? 'text-blue-600 bg-blue-50 font-bold'
+                : 'text-slate-700 hover:bg-slate-50'
+            }`}
           >
             {t.nav.faq}
           </button>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
-import farukhAliLogo from '../assets/images/farukh_ali_brand_logo_cutout.png';
+import bgRemoveLogo from '../assets/images/bg_remove_circular_logo.png';
 
 interface FooterProps {
   currentLang: Language;
@@ -18,18 +18,18 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onNavClick }) => {
         {/* Top footer row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800/80">
           
-          {/* Logo & Tagline with Farukh Ali Circular Badge */}
+          {/* Logo & Tagline with Circular Emblem */}
           <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-rose-300 to-amber-500 shadow-md">
+            <div className="relative w-11 h-11 rounded-full">
               <img
-                src={farukhAliLogo}
-                alt="Farukh Ali Logo"
-                className="w-full h-full rounded-full object-cover object-center ring-1 ring-white/60 bg-slate-900"
+                src={bgRemoveLogo}
+                alt="BG Remove Logo"
+                className="w-full h-full rounded-full object-contain drop-shadow-sm"
               />
             </div>
             <div className="flex items-baseline gap-1 text-xl font-extrabold tracking-tight">
               <span className="text-blue-400">BG</span>
-              <span className="text-white">Remover</span>
+              <span className="text-white">Remove</span>
             </div>
             <span className="text-slate-500 hidden sm:inline">—</span>
             <span className="text-slate-400 text-sm hidden sm:inline font-medium">
@@ -69,7 +69,7 @@ export const Footer: React.FC<FooterProps> = ({ currentLang, onNavClick }) => {
         {/* Bottom banner matching screenshot exact text */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p className="font-medium text-slate-300">
-            BG Remover — {t.footer.brandTagline}
+            BG Remove — {t.footer.brandTagline}
           </p>
 
           <div className="flex items-center gap-4">

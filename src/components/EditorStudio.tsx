@@ -150,6 +150,38 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
     { id: 'peach', label: 'Warm Peach', class: 'from-rose-100 to-amber-100' },
   ];
 
+  const gradientMap: Record<string, string> = {
+    studio: 'from-slate-100 to-slate-300',
+    sunset: 'from-orange-400 to-rose-400',
+    cyber: 'from-slate-900 via-blue-600 to-purple-600',
+    mint: 'from-sky-100 to-teal-100',
+    peach: 'from-rose-100 to-amber-100',
+  };
+
+  // Instant pre-made custom backdrop presets
+  const presetBackdrops = [
+    {
+      id: 'studio-clean',
+      title: 'Studio Room',
+      url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+    },
+    {
+      id: 'modern-interior',
+      title: 'Modern Living',
+      url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80',
+    },
+    {
+      id: 'nature-garden',
+      title: 'Nature Park',
+      url: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80',
+    },
+    {
+      id: 'luxury-marble',
+      title: 'Marble Surface',
+      url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+    },
+  ];
+
   if (isProcessing) {
     // Calculate SVG circle progress
     const radius = 38;
@@ -437,247 +469,297 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
       </div>
 
       {/* Main Workspace: Canvas Stage + Controls Sidebar */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
         
-        {/* PREVIEW STAGE (8 cols) */}
+        {/* PREVIEW STAGE (8 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col space-y-3">
           
-          {/* View Mode Switcher */}
-          <div className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setViewMode('slider')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'slider'
-                    ? 'bg-blue-50 text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>{t.editor.splitSlider}</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('side-by-side')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'side-by-side'
-                    ? 'bg-blue-50 text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Columns className="w-3.5 h-3.5" />
-                <span>{t.editor.sideBySide}</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('single')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'single'
-                    ? 'bg-blue-50 text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>{t.editor.onlyCutout}</span>
-              </button>
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.2))}
-                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <span className="text-[11px] font-mono font-semibold text-slate-500 w-10 text-center">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              <button
-                onClick={() => setZoomLevel((z) => Math.min(2.0, z + 0.2))}
-                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setZoomLevel(1)}
-                className="text-[11px] font-semibold text-slate-500 px-2 py-1 hover:bg-slate-100 rounded"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          {/* Canvas Preview Container */}
-          <div className="w-full bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-sm overflow-hidden flex items-center justify-center min-h-[460px]">
+          {/* Main Card Container: Contains internal toolbar (View Mode + Zoom & Reset) and Canvas */}
+          <div className="w-full bg-white rounded-3xl border border-slate-200 p-3 sm:p-5 shadow-sm overflow-hidden flex flex-col space-y-3">
             
-            {/* 1. SLIDER MODE */}
-            {viewMode === 'slider' && (
-              <div
-                ref={sliderContainerRef}
-                onMouseMove={(e) => e.buttons === 1 && handleSliderMove(e.clientX)}
-                onTouchMove={(e) => e.touches[0] && handleSliderMove(e.touches[0].clientX)}
-                onClick={(e) => handleSliderMove(e.clientX)}
-                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
-                className="relative max-w-full max-h-[580px] rounded-2xl overflow-hidden cursor-ew-resize select-none shadow-md checkerboard-pattern transition-transform duration-100"
-              >
-                {/* Background Layer with chosen settings */}
-                <div
-                  className="w-full h-full relative"
-                  style={{
-                    backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
-                  }}
+            {/* Top Toolbar INSIDE THE CARD: View Mode on left, Zoom & Reset on right */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              
+              {/* View Mode buttons */}
+              <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl">
+                <button
+                  onClick={() => setViewMode('slider')}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'slider'
+                      ? 'bg-white text-blue-600 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {/* If blur mode */}
-                  {bgSettings.mode === 'blur' && (
-                    <img
-                      src={result.originalUrl}
-                      alt="Blurred original"
-                      className="absolute inset-0 w-full h-full object-contain scale-110 filter pointer-events-none"
-                      style={{ filter: `blur(${bgSettings.blurAmount}px)` }}
-                    />
-                  )}
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.editor.splitSlider}</span>
+                  <span className="sm:hidden">Slider</span>
+                </button>
 
-                  {/* Cutout foreground */}
-                  <img
-                    src={result.cutoutUrl}
-                    alt="Foreground Cutout"
-                    className="block max-h-[560px] w-auto object-contain mx-auto pointer-events-none relative z-10"
-                  />
-                </div>
-
-                {/* Original Layer overlay clipped to slider position */}
-                <div
-                  className="absolute inset-0 overflow-hidden pointer-events-none z-20"
-                  style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                <button
+                  onClick={() => setViewMode('side-by-side')}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'side-by-side'
+                      ? 'bg-white text-blue-600 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <img
-                    src={result.originalUrl}
-                    alt="Original"
-                    className="block max-h-[560px] w-auto object-contain mx-auto"
-                  />
-                </div>
+                  <Columns className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.editor.sideBySide}</span>
+                  <span className="sm:hidden">Split</span>
+                </button>
 
-                {/* Divider Line & Handle */}
-                <div
-                  className="absolute top-0 bottom-0 w-1 bg-white shadow-xl pointer-events-none z-30"
-                  style={{ left: `${sliderPos}%` }}
+                <button
+                  onClick={() => setViewMode('single')}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'single'
+                      ? 'bg-white text-blue-600 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
-                    <Sliders className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div className="absolute top-3 left-3 z-30 pointer-events-none">
-                  <span className="bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs">
-                    {t.hero.originalImage}
-                  </span>
-                </div>
-                <div className="absolute top-3 right-3 z-30 pointer-events-none">
-                  <span className="bg-emerald-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs">
-                    {t.hero.backgroundRemoved}
-                  </span>
-                </div>
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.editor.onlyCutout}</span>
+                  <span className="sm:hidden">Cutout</span>
+                </button>
               </div>
-            )}
 
-            {/* 2. SIDE-BY-SIDE MODE */}
-            {viewMode === 'side-by-side' && (
-              <div 
-                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
-                className="w-full flex flex-col md:flex-row items-center justify-center gap-6"
-              >
-                {/* Original */}
-                <div className="flex-1 max-w-[340px] bg-slate-100 rounded-2xl p-2.5 shadow-sm border border-slate-200">
-                  <div className="relative rounded-xl overflow-hidden aspect-[3/4] bg-slate-200">
-                    <span className="absolute top-2 left-2 z-10 bg-slate-900/70 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                      {t.hero.originalImage}
-                    </span>
-                    <img
-                      src={result.originalUrl}
-                      alt="Original"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                </div>
+              {/* Zoom Controls & Reset Button — INSIDE the card, fully responsive */}
+              <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl">
+                <button
+                  onClick={() => setZoomLevel((z) => Math.max(0.6, Number((z - 0.2).toFixed(1))))}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition-colors cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[11px] font-mono font-bold text-slate-700 min-w-9 text-center px-0.5">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomLevel((z) => Math.min(2.0, Number((z + 0.2).toFixed(1))))}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition-colors cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <div className="h-3.5 w-px bg-slate-300 mx-0.5" />
+                <button
+                  onClick={() => {
+                    setZoomLevel(1);
+                    setSliderPos(50);
+                  }}
+                  className="text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:bg-white px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                  title="Reset zoom & slider"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
 
-                {/* Cutout */}
-                <div className="flex-1 max-w-[340px] bg-slate-100 rounded-2xl p-2.5 shadow-sm border border-slate-200">
+            {/* Canvas Stage */}
+            <div className="w-full rounded-2xl bg-slate-50/70 border border-slate-100 p-2 sm:p-4 flex items-center justify-center min-h-[300px] sm:min-h-[420px] max-h-[520px] overflow-hidden">
+              
+              {/* 1. SLIDER MODE */}
+              {viewMode === 'slider' && (
+                <div
+                  ref={sliderContainerRef}
+                  onMouseMove={(e) => e.buttons === 1 && handleSliderMove(e.clientX)}
+                  onTouchMove={(e) => e.touches[0] && handleSliderMove(e.touches[0].clientX)}
+                  onClick={(e) => handleSliderMove(e.clientX)}
+                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                  className="relative max-w-full max-h-[360px] sm:max-h-[480px] rounded-2xl overflow-hidden cursor-ew-resize select-none shadow-md checkerboard-pattern transition-transform duration-100"
+                >
+                  {/* Background Layer with chosen settings */}
                   <div
-                    className="relative rounded-xl overflow-hidden aspect-[3/4] checkerboard-pattern"
+                    className={`w-full h-full relative overflow-hidden flex items-center justify-center ${
+                      bgSettings.mode === 'gradient'
+                        ? `bg-gradient-to-r ${gradientMap[bgSettings.gradient || 'studio'] || 'from-slate-100 to-slate-300'}`
+                        : ''
+                    }`}
                     style={{
                       backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
                     }}
                   >
-                    <span className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                      {t.hero.backgroundRemoved}
-                    </span>
+                    {/* Custom Backdrop Image */}
+                    {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
+                      <img
+                        src={bgSettings.customImageUrl}
+                        alt="Custom Backdrop"
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      />
+                    )}
+
+                    {/* DSLR Blur mode */}
+                    {bgSettings.mode === 'blur' && (
+                      <img
+                        src={result.originalUrl}
+                        alt="Blurred original"
+                        className="absolute inset-0 w-full h-full object-contain scale-110 filter pointer-events-none"
+                        style={{ filter: `blur(${bgSettings.blurAmount}px)` }}
+                      />
+                    )}
+
+                    {/* Cutout foreground */}
                     <img
                       src={result.cutoutUrl}
-                      alt="Cutout"
-                      className="w-full h-full object-contain relative z-1"
+                      alt="Foreground Cutout"
+                      className="block max-h-[340px] sm:max-h-[460px] w-auto object-contain mx-auto pointer-events-none relative z-10"
+                    />
+                  </div>
+
+                  {/* Original Layer overlay clipped to slider position */}
+                  <div
+                    className="absolute inset-0 overflow-hidden pointer-events-none z-20"
+                    style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                  >
+                    <img
+                      src={result.originalUrl}
+                      alt="Original"
+                      className="block max-h-[340px] sm:max-h-[460px] w-auto object-contain mx-auto"
+                    />
+                  </div>
+
+                  {/* Divider Line & Handle */}
+                  <div
+                    className="absolute top-0 bottom-0 w-1 bg-white shadow-xl pointer-events-none z-30"
+                    style={{ left: `${sliderPos}%` }}
+                  >
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
+                      <Sliders className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. SIDE-BY-SIDE MODE */}
+              {viewMode === 'side-by-side' && (
+                <div 
+                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                  className="w-full flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+                >
+                  {/* Original */}
+                  <div className="flex-1 max-w-[320px] bg-slate-100 rounded-2xl p-2 shadow-xs border border-slate-200">
+                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] bg-slate-200 flex items-center justify-center">
+                      <img
+                        src={result.originalUrl}
+                        alt="Original"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cutout */}
+                  <div className="flex-1 max-w-[320px] bg-slate-100 rounded-2xl p-2 shadow-xs border border-slate-200">
+                    <div
+                      className={`relative rounded-xl overflow-hidden aspect-[3/4] checkerboard-pattern flex items-center justify-center ${
+                        bgSettings.mode === 'gradient'
+                          ? `bg-gradient-to-r ${gradientMap[bgSettings.gradient || 'studio'] || 'from-slate-100 to-slate-300'}`
+                          : ''
+                      }`}
+                      style={{
+                        backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
+                      }}
+                    >
+                      {/* Custom Backdrop Image */}
+                      {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
+                        <img
+                          src={bgSettings.customImageUrl}
+                          alt="Custom Backdrop"
+                          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                        />
+                      )}
+
+                      {/* DSLR Blur */}
+                      {bgSettings.mode === 'blur' && (
+                        <img
+                          src={result.originalUrl}
+                          alt="Blurred original"
+                          className="absolute inset-0 w-full h-full object-contain scale-110 filter pointer-events-none"
+                          style={{ filter: `blur(${bgSettings.blurAmount}px)` }}
+                        />
+                      )}
+
+                      <img
+                        src={result.cutoutUrl}
+                        alt="Cutout"
+                        className="w-full h-full object-contain relative z-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. SINGLE CUTOUT MODE */}
+              {viewMode === 'single' && (
+                <div
+                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                  className="relative max-h-[360px] sm:max-h-[480px] rounded-2xl overflow-hidden checkerboard-pattern shadow-md"
+                >
+                  <div
+                    className={`w-full h-full relative overflow-hidden flex items-center justify-center ${
+                      bgSettings.mode === 'gradient'
+                        ? `bg-gradient-to-r ${gradientMap[bgSettings.gradient || 'studio'] || 'from-slate-100 to-slate-300'}`
+                        : ''
+                    }`}
+                    style={{
+                      backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
+                    }}
+                  >
+                    {/* Custom Backdrop Image */}
+                    {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
+                      <img
+                        src={bgSettings.customImageUrl}
+                        alt="Custom Backdrop"
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      />
+                    )}
+
+                    {/* DSLR Blur */}
+                    {bgSettings.mode === 'blur' && (
+                      <img
+                        src={result.originalUrl}
+                        alt="Blurred original"
+                        className="absolute inset-0 w-full h-full object-contain scale-110 filter pointer-events-none"
+                        style={{ filter: `blur(${bgSettings.blurAmount}px)` }}
+                      />
+                    )}
+
+                    <img
+                      src={result.cutoutUrl}
+                      alt="Cutout Preview"
+                      className="block max-h-[340px] sm:max-h-[460px] w-auto object-contain mx-auto relative z-1"
                     />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* 3. SINGLE CUTOUT MODE */}
-            {viewMode === 'single' && (
-              <div
-                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
-                className="relative max-h-[580px] rounded-2xl overflow-hidden checkerboard-pattern shadow-md"
-              >
-                <div
-                  className="w-full h-full relative"
-                  style={{
-                    backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
-                  }}
-                >
-                  {bgSettings.mode === 'blur' && (
-                    <img
-                      src={result.originalUrl}
-                      alt="Blurred original"
-                      className="absolute inset-0 w-full h-full object-contain scale-110 filter pointer-events-none"
-                      style={{ filter: `blur(${bgSettings.blurAmount}px)` }}
-                    />
-                  )}
-                  <img
-                    src={result.cutoutUrl}
-                    alt="Cutout Preview"
-                    className="block max-h-[560px] w-auto object-contain mx-auto relative z-1"
-                  />
-                </div>
-              </div>
-            )}
-
+            </div>
           </div>
 
           <p className="text-center text-xs text-slate-400">
-            {viewMode === 'slider' ? t.hero.interactiveNotice : '100% transparent alpha channel preserved'}
+            {viewMode === 'slider' ? 'Drag slider left/right to inspect precision edge cutoff' : '100% transparent alpha channel preserved'}
           </p>
         </div>
 
-        {/* CONTROLS SIDEBAR (4 cols) */}
-        <div className="lg:col-span-4 space-y-5">
+        {/* CONTROLS SIDEBAR (4 cols on desktop, right below canvas on mobile with zero long scrolling) */}
+        <div className="lg:col-span-4 space-y-4">
           
           {/* Background Customizer Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-5">
-            <h3 className="font-bold text-slate-900 text-base flex items-center justify-between">
-              <span>{t.editor.backgroundPresets}</span>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                {bgSettings.mode.toUpperCase()}
+          <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+            
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                <span>{t.editor.backgroundPresets}</span>
+              </h3>
+              <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">
+                {bgSettings.mode}
               </span>
-            </h3>
+            </div>
 
-            {/* Mode selection buttons */}
-            <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-2xl text-xs font-semibold">
+            {/* Mode selection buttons: 5 intuitive tabs */}
+            <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-2xl text-[11px] sm:text-xs font-semibold">
               <button
                 onClick={() => setBgSettings((s) => ({ ...s, mode: 'transparent' }))}
-                className={`py-2 px-1 rounded-xl transition-all text-center ${
+                className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
                   bgSettings.mode === 'transparent'
                     ? 'bg-white text-blue-600 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -687,7 +769,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </button>
               <button
                 onClick={() => setBgSettings((s) => ({ ...s, mode: 'color' }))}
-                className={`py-2 px-1 rounded-xl transition-all text-center ${
+                className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
                   bgSettings.mode === 'color'
                     ? 'bg-white text-blue-600 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -697,7 +779,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </button>
               <button
                 onClick={() => setBgSettings((s) => ({ ...s, mode: 'gradient' }))}
-                className={`py-2 px-1 rounded-xl transition-all text-center ${
+                className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
                   bgSettings.mode === 'gradient'
                     ? 'bg-white text-blue-600 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -706,8 +788,18 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                 Gradient
               </button>
               <button
+                onClick={() => setBgSettings((s) => ({ ...s, mode: 'custom' }))}
+                className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
+                  bgSettings.mode === 'custom'
+                    ? 'bg-white text-blue-600 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Photo
+              </button>
+              <button
                 onClick={() => setBgSettings((s) => ({ ...s, mode: 'blur' }))}
-                className={`py-2 px-1 rounded-xl transition-all text-center ${
+                className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
                   bgSettings.mode === 'blur'
                     ? 'bg-white text-blue-600 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -719,13 +811,13 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
             {/* TAB CONTENT: 1. TRANSPARENT */}
             {bgSettings.mode === 'transparent' && (
-              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-2">
-                <div className="w-10 h-10 rounded-xl checkerboard-pattern border border-slate-300 mx-auto shadow-2xs" />
-                <p className="text-xs font-semibold text-slate-800">
+              <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1.5">
+                <div className="w-8 h-8 rounded-lg checkerboard-pattern border border-slate-300 mx-auto shadow-2xs" />
+                <p className="text-xs font-bold text-slate-800">
                   {t.editor.transparent} PNG
                 </p>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Best for design in Photoshop, Canva, website banners, and e-commerce listings.
+                  Transparent alpha channel preserved. Ideal for graphic designs, stickers, and online store listings.
                 </p>
               </div>
             )}
@@ -744,9 +836,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       onClick={() => setBgSettings((s) => ({ ...s, color: preset.value }))}
                       title={preset.label}
                       style={{ backgroundColor: preset.value }}
-                      className={`w-full aspect-square rounded-xl border-2 transition-all transform hover:scale-105 ${
+                      className={`w-full aspect-square rounded-xl border-2 transition-all transform hover:scale-105 cursor-pointer ${
                         bgSettings.color === preset.value
-                          ? 'border-blue-600 shadow-sm scale-105'
+                          ? 'border-blue-600 shadow-sm scale-105 ring-2 ring-blue-400/30'
                           : 'border-slate-200'
                       }`}
                     />
@@ -785,10 +877,10 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                     <button
                       key={grad.id}
                       onClick={() => setBgSettings((s) => ({ ...s, gradient: grad.id }))}
-                      className={`h-12 rounded-xl bg-gradient-to-r ${grad.class} flex items-center justify-center text-xs font-bold transition-all border ${
+                      className={`h-11 rounded-xl bg-gradient-to-r ${grad.class} flex items-center justify-center text-xs font-bold transition-all border cursor-pointer ${
                         bgSettings.gradient === grad.id
                           ? 'border-blue-600 shadow-sm ring-2 ring-blue-500/20 text-slate-900'
-                          : 'border-slate-200 text-slate-800'
+                          : 'border-slate-200 text-slate-800 hover:border-slate-300'
                       }`}
                     >
                       {grad.label}
@@ -798,9 +890,93 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </div>
             )}
 
-            {/* TAB CONTENT: 4. PORTRAIT BOKEH BLUR */}
+            {/* TAB CONTENT: 4. CUSTOM PHOTO BACKDROP (FIXED & 100% FUNCTIONAL) */}
+            {bgSettings.mode === 'custom' && (
+              <div className="space-y-3">
+                
+                {/* Upload Button */}
+                <input
+                  type="file"
+                  ref={bgUploadInputRef}
+                  onChange={handleCustomBgUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                <button
+                  onClick={() => bgUploadInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-500 text-blue-700 text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  <span>Upload Photo from Device</span>
+                </button>
+
+                {/* If custom photo is active */}
+                {bgSettings.customImageUrl && (
+                  <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    <img
+                      src={bgSettings.customImageUrl}
+                      alt="Active Backdrop"
+                      className="w-12 h-12 rounded-lg object-cover border border-slate-200"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 flex items-center gap-1 truncate">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Backdrop Applied</span>
+                      </p>
+                      <button
+                        onClick={() => setBgSettings((s) => ({ ...s, mode: 'transparent', customImageUrl: undefined }))}
+                        className="text-[11px] text-red-500 hover:text-red-700 underline font-medium cursor-pointer"
+                      >
+                        Remove Backdrop
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick 1-tap Photo Presets */}
+                <div className="pt-2">
+                  <p className="text-[11px] font-semibold text-slate-500 mb-2">
+                    Or select a pre-made backdrop:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {presetBackdrops.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() =>
+                          setBgSettings((s) => ({
+                            ...s,
+                            mode: 'custom',
+                            customImageUrl: item.url,
+                          }))
+                        }
+                        className={`group relative h-14 rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                          bgSettings.customImageUrl === item.url
+                            ? 'border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <img
+                          src={item.url}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-1.5">
+                          <span className="text-[10px] font-bold text-white truncate">
+                            {item.title}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB CONTENT: 5. PORTRAIT BOKEH BLUR */}
             {bgSettings.mode === 'blur' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                   <span>{t.editor.blurAmount}</span>
                   <span className="font-mono text-blue-600">{bgSettings.blurAmount}px</span>
@@ -815,55 +991,58 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   }
                   className="w-full accent-blue-600 cursor-pointer"
                 />
-                <p className="text-[11px] text-slate-500">
-                  Blurs the original background while keeping the subject crisp, creating a DSLR portrait camera look!
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Blurs the original background while keeping the subject razor-sharp, creating a DSLR portrait camera look!
                 </p>
               </div>
             )}
 
-            {/* Custom image background upload */}
-            <div className="pt-3 border-t border-slate-100">
-              <input
-                type="file"
-                ref={bgUploadInputRef}
-                onChange={handleCustomBgUpload}
-                accept="image/*"
-                className="hidden"
-              />
-              <button
-                onClick={() => bgUploadInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-200 hover:border-blue-400 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
-              >
-                <Upload className="w-3.5 h-3.5 text-slate-500" />
-                <span>Upload Custom Backdrop Photo</span>
-              </button>
-            </div>
-
           </div>
 
           {/* Quick Download Summary Card */}
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-6 text-white shadow-md shadow-blue-500/20 space-y-4">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-5 text-white shadow-md shadow-blue-500/20 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-blue-200" />
               </div>
-              <div>
-                <h4 className="font-bold text-white text-sm">Full Resolution Ready</h4>
-                <p className="text-blue-100 text-xs">{result.width} × {result.height} pixels</p>
+              <div className="min-w-0">
+                <h4 className="font-bold text-white text-sm truncate">HD Export Ready</h4>
+                <p className="text-blue-100 text-xs font-mono">{result.width} × {result.height} px</p>
               </div>
             </div>
 
-            <button
-              onClick={() => handleDownload('png')}
-              disabled={isDownloading}
-              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-blue-50 active:scale-98 text-blue-600 font-bold text-sm py-3.5 rounded-xl shadow-md transition-all cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>{t.editor.downloadHd}</span>
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={() => handleDownload('png')}
+                disabled={isDownloading}
+                className="w-full flex items-center justify-center gap-1.5 bg-white hover:bg-blue-50 active:scale-98 text-blue-600 font-bold text-xs py-3 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PNG</span>
+              </button>
 
-            <p className="text-center text-[11px] text-blue-100/90">
-              Free instant download • No watermarks • No limits
+              {bgSettings.mode !== 'transparent' ? (
+                <button
+                  onClick={() => handleDownload('jpg')}
+                  disabled={isDownloading}
+                  className="w-full flex items-center justify-center gap-1.5 bg-blue-900/60 hover:bg-blue-900 active:scale-98 text-white font-bold text-xs py-3 rounded-xl border border-white/20 transition-all cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download JPG</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleCopy}
+                  className="w-full flex items-center justify-center gap-1.5 bg-blue-900/60 hover:bg-blue-900 active:scale-98 text-white font-bold text-xs py-3 rounded-xl border border-white/20 transition-all cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{isCopied ? 'Copied!' : 'Copy PNG'}</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-center text-[11px] text-blue-100/80 pt-1">
+              100% Free • High-Resolution • No Watermark
             </p>
           </div>
 

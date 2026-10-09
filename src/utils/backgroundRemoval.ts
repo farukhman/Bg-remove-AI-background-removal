@@ -425,6 +425,21 @@ export async function renderFinalCanvas(
         grad.addColorStop(0.5, '#ec4899');
         grad.addColorStop(1, '#8b5cf6');
         break;
+      case 'studio':
+        grad.addColorStop(0, '#f1f5f9');
+        grad.addColorStop(0.5, '#cbd5e1');
+        grad.addColorStop(1, '#94a3b8');
+        break;
+      case 'cyber':
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(0.5, '#2563eb');
+        grad.addColorStop(1, '#7c3aed');
+        break;
+      case 'mint':
+        grad.addColorStop(0, '#ecfdf5');
+        grad.addColorStop(0.5, '#a7f3d0');
+        grad.addColorStop(1, '#5eead4');
+        break;
       case 'ocean':
         grad.addColorStop(0, '#06b6d4');
         grad.addColorStop(0.5, '#3b82f6');

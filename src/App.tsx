@@ -148,21 +148,18 @@ export default function App() {
     }
   };
 
-  // Scroll to section
+  const [activePage, setActivePage] = useState<'home' | 'how-it-works' | 'features' | 'faq'>('home');
+
+  // Navigate to separate page or home
   const handleNavClick = (sectionId: string) => {
     if (showEditor) {
       setShowEditor(false);
     }
-    setTimeout(() => {
-      if (sectionId === 'home') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
+    const target = ['home', 'how-it-works', 'features', 'faq'].includes(sectionId)
+      ? (sectionId as 'home' | 'how-it-works' | 'features' | 'faq')
+      : 'home';
+    setActivePage(target);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -173,12 +170,13 @@ export default function App() {
       {/* Top Navbar */}
       <Navbar
         currentLang={currentLang}
+        activePage={activePage}
         onLanguageChange={setCurrentLang}
         onSelectUpload={handleOpenUpload}
         onNavClick={handleNavClick}
       />
 
-      {/* Main Content: Either the Landing Page or the Editor Studio */}
+      {/* Main Content: Either the Editor Studio or Separate Pages */}
       <main className="flex-1">
         {showEditor ? (
           <EditorStudio
@@ -191,27 +189,31 @@ export default function App() {
             onBackToHome={() => setShowEditor(false)}
             onUploadAnother={handleOpenUpload}
           />
+        ) : activePage === 'how-it-works' ? (
+          <HowItWorks
+            currentLang={currentLang}
+            onUploadClick={handleOpenUpload}
+            onBackToHome={() => handleNavClick('home')}
+          />
+        ) : activePage === 'features' ? (
+          <FeatureGrid
+            currentLang={currentLang}
+            onBackToHome={() => handleNavClick('home')}
+            onUploadClick={handleOpenUpload}
+          />
+        ) : activePage === 'faq' ? (
+          <FaqSection
+            currentLang={currentLang}
+            onBackToHome={() => handleNavClick('home')}
+            onUploadClick={handleOpenUpload}
+          />
         ) : (
-          <>
-            {/* Hero Section matching screenshot */}
-            <Hero
-              currentLang={currentLang}
-              onImageSelected={handleImageSelected}
-              fileInputRef={fileInputRef}
-            />
-
-            {/* Feature Grid: 4 circular icons matching screenshot */}
-            <FeatureGrid currentLang={currentLang} />
-
-            {/* How It Works */}
-            <HowItWorks
-              currentLang={currentLang}
-              onUploadClick={handleOpenUpload}
-            />
-
-            {/* FAQ Accordion */}
-            <FaqSection currentLang={currentLang} />
-          </>
+          /* Home Page: Hero with Upload, Shoes Showcase, and Quick Samples */
+          <Hero
+            currentLang={currentLang}
+            onImageSelected={handleImageSelected}
+            fileInputRef={fileInputRef}
+          />
         )}
       </main>
 
