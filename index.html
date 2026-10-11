@@ -3,67 +3,85 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BG Remover - AI Background Removal</title>
+    <title>BG Remove - AI Background Removal</title>
+    <link rel="canonical" href="https://bg.removed.workers.dev/" />
     <!-- Primary Favicons for Google Search & Browsers (multiples of 48px required by Google) -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
-    <link rel="icon" type="image/png" sizes="144x144" href="/favicon-144x144.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=3" sizes="48x48" />
+    <link rel="shortcut icon" href="https://bg.removed.workers.dev/favicon.ico?v=3" type="image/x-icon" />
+    <link rel="icon" type="image/png" sizes="48x48" href="https://bg.removed.workers.dev/favicon-48x48.png?v=3" />
+    <link rel="icon" type="image/png" sizes="96x96" href="https://bg.removed.workers.dev/favicon-96x96.png?v=3" />
+    <link rel="icon" type="image/png" sizes="144x144" href="https://bg.removed.workers.dev/favicon-144x144.png?v=3" />
+    <link rel="icon" type="image/png" sizes="192x192" href="https://bg.removed.workers.dev/favicon-192x192.png?v=3" />
+    <link rel="icon" type="image/png" sizes="512x512" href="https://bg.removed.workers.dev/favicon-512x512.png?v=3" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=3" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=3" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://bg.removed.workers.dev/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#0284c7" />
     <meta name="application-name" content="BG Remove" />
     <meta name="apple-mobile-web-app-title" content="BG Remove" />
     <meta name="google-site-verification" content="70shGxwbudqKCn-HRisz1C-eXlckZ5Tlp3qiT_vGed8" />
     <meta name="description" content="Upload any image and remove the background instantly with advanced AI. Download crisp, transparent PNGs in high resolution for free." />
-    <!-- OpenGraph & Social Sharing -->
+    <!-- OpenGraph & Social Sharing (Used by Google for Site Name & Logo) -->
     <meta property="og:site_name" content="BG Remove" />
-    <meta property="og:title" content="BG Remover - AI Background Removal" />
+    <meta property="og:url" content="https://bg.removed.workers.dev/" />
+    <meta property="og:title" content="BG Remove - AI Background Removal" />
     <meta property="og:description" content="Upload any image and remove the background instantly with advanced AI. Download crisp, transparent PNGs in high resolution for free." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="https://bg.removed.workers.dev/logo.png" />
+    <meta property="og:image:secure_url" content="https://bg.removed.workers.dev/logo.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta property="og:image:alt" content="BG Remove Official Logo" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="BG Remover - AI Background Removal" />
+    <meta name="twitter:title" content="BG Remove - AI Background Removal" />
     <meta name="twitter:description" content="Upload any image and remove the background instantly with advanced AI. Download crisp, transparent PNGs in high resolution for free." />
-    <meta name="twitter:image" content="/logo.png" />
-    <!-- Google Search Structured Data (Organization, WebSite & WebApplication Logo) -->
+    <meta name="twitter:image" content="https://bg.removed.workers.dev/logo.png" />
+    <!-- Google Search Structured Data: WebSite (Overrides 'Cloudflare' site name) & Organization (Logo) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@graph": [
           {
-            "@type": "Organization",
+            "@type": "WebSite",
+            "@id": "https://bg.removed.workers.dev/#website",
             "name": "BG Remove",
-            "alternateName": "BG Remover - AI Background Removal",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "/logo.png",
-              "width": 512,
-              "height": 512
-            },
-            "image": "/logo.png"
+            "alternateName": ["BG Remover", "BG Remove AI", "bg.removed.workers.dev"],
+            "url": "https://bg.removed.workers.dev/",
+            "inLanguage": ["en", "ur", "hi"],
+            "publisher": {
+              "@id": "https://bg.removed.workers.dev/#organization"
+            }
           },
           {
-            "@type": "WebSite",
+            "@type": "Organization",
+            "@id": "https://bg.removed.workers.dev/#organization",
             "name": "BG Remove",
-            "alternateName": "BG Remover - AI Background Removal",
-            "inLanguage": ["en", "ur", "hi"]
+            "alternateName": "BG Remover",
+            "url": "https://bg.removed.workers.dev/",
+            "logo": {
+              "@type": "ImageObject",
+              "@id": "https://bg.removed.workers.dev/#logo",
+              "url": "https://bg.removed.workers.dev/logo.png",
+              "contentUrl": "https://bg.removed.workers.dev/logo.png",
+              "width": 512,
+              "height": 512,
+              "caption": "BG Remove"
+            },
+            "image": {
+              "@id": "https://bg.removed.workers.dev/#logo"
+            }
           },
           {
             "@type": "WebApplication",
-            "name": "BG Remover - AI Background Removal",
+            "@id": "https://bg.removed.workers.dev/#webapp",
+            "name": "BG Remove",
+            "url": "https://bg.removed.workers.dev/",
             "applicationCategory": "MultimediaApplication",
             "operatingSystem": "All",
             "description": "Upload any image and remove the background instantly with advanced AI. Download crisp, transparent PNGs in high resolution for free.",
-            "image": "/logo.png",
+            "image": "https://bg.removed.workers.dev/logo.png",
             "offers": {
               "@type": "Offer",
               "price": "0",
