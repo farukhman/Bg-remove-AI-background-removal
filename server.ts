@@ -48,7 +48,7 @@ app.post('/api/remove-bg', async (req, res) => {
 
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
 
-    // Call Gemini Image model with 6-second timeout to avoid any freezing or long delays
+    // Autonomous AI Cutout Prompt: Inspects the picture type first and applies the optimal cutout method
     const generatePromise = ai.models.generateContent({
       model: 'gemini-3.1-flash-lite-image',
       contents: {
@@ -61,14 +61,14 @@ app.post('/api/remove-bg', async (req, res) => {
           },
           {
             text:
-              'Remove the background of this image completely. Isolate the main foreground subject on a completely transparent PNG background, and return only the cutout subject as a transparent PNG.',
+              'Automatically analyze this picture first (determine whether it is a circular logo/badge, typography/text, product, or portrait photo) and apply the highest-precision background cutout method for it. If it has circular lines or curves, keep the curves 100% smooth and round with clean anti-aliasing. If it contains letters or enclosed rings, remove all interior background holes completely while keeping interior subject elements intact. Output only the clean transparent PNG cutout.',
           },
         ],
       },
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini request timeout after 6s')), 6000)
+      setTimeout(() => reject(new Error('Gemini request timeout after 3.5s')), 3500)
     );
 
     const response = (await Promise.race([generatePromise, timeoutPromise])) as any;

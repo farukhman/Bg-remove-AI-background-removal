@@ -107,20 +107,9 @@ export default function App() {
           throw processingError;
         }
 
-        let stepDelayMs = 18;
-        if (isTaskDone && processedData) {
-          // Processed result is ready! Quickly count up to 100% with zero lag
-          stepDelayMs = 8;
-        } else if (currentPct < 70) {
-          stepDelayMs = 20;
-        } else if (currentPct < 90) {
-          stepDelayMs = 35;
-        } else if (currentPct < 96) {
-          stepDelayMs = 60;
-        } else {
-          // Beyond 96%, step gently without freezing until work settles
-          stepDelayMs = 80;
-        }
+        // Uniform, non-sticking pace from 1% to 100% — never slows down or pauses mid-way!
+        // Speeds up smoothly as soon as the cutout task finishes.
+        const stepDelayMs = isTaskDone && processedData ? 6 : 18;
 
         await new Promise((resolve) => setTimeout(resolve, stepDelayMs));
         currentPct += 1;
@@ -128,7 +117,7 @@ export default function App() {
         setProgressStatus(getStatusForPercent(currentPct));
       }
 
-      // Ensure background removal has resolved
+      // If at 100% and final PNG blob is wrapping up, wait briefly at 100% before opening editor
       if (!isTaskDone) {
         await workPromise;
       }
