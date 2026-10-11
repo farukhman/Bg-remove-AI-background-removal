@@ -7,6 +7,7 @@ import { HowItWorks } from './components/HowItWorks';
 import { FaqSection } from './components/FaqSection';
 import { Footer } from './components/Footer';
 import { EditorStudio } from './components/EditorStudio';
+import { OfflineIndicator } from './components/PWAInstallButton';
 import { Language } from './utils/translations';
 import {
   ProcessedResult,
@@ -208,6 +209,9 @@ export default function App() {
 
       {/* Bottom Footer */}
       <Footer currentLang={currentLang} onNavClick={handleNavClick} />
+
+      {/* Offline PWA Status Indicator */}
+      <OfflineIndicator />
 
       {/* Global Error Banner */}
       {errorMessage && (

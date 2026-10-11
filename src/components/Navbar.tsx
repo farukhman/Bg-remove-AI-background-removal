@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Globe, ChevronDown, Check, Sparkles, Menu, X } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
 import bgRemoveLogo from '../assets/images/bg_remove_circular_logo.png';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   currentLang: Language;
@@ -91,8 +92,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        {/* Right Section: Language Dropdown + CTA Button */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* Right Section: Install App Button + Language Dropdown + CTA Button */}
+        <div className="hidden md:flex items-center gap-3">
+          <PWAInstallButton currentLang={currentLang} />
+
           {/* Language selector */}
           <div className="relative">
             <button
@@ -146,6 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Mobile menu button */}
         <div className="flex md:hidden items-center gap-2">
+          <PWAInstallButton currentLang={currentLang} compact />
           <button
             onClick={() => onLanguageChange(currentLang === 'en' ? 'ur' : 'en')}
             className="p-2 text-xs font-semibold text-slate-700 bg-slate-100 rounded-lg"
@@ -216,6 +220,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             {t.nav.faq}
           </button>
+          <div className="pt-1">
+            <PWAInstallButton currentLang={currentLang} />
+          </div>
           <button
             onClick={() => {
               onSelectUpload();
