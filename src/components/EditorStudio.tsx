@@ -10,15 +10,16 @@ import {
   RotateCcw,
   Paintbrush,
   Eraser,
-  RefreshCw,
   Sparkles,
   ZoomIn,
   ZoomOut,
   Upload,
   CheckCircle2,
   Wand2,
-  ShieldCheck,
   Cpu,
+  Undo2,
+  Scissors,
+  CheckCheck,
 } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
 import {
@@ -27,6 +28,7 @@ import {
   downloadImage,
   copyImageToClipboard,
   loadImage,
+  refineCutoutEdges,
 } from '../utils/backgroundRemoval';
 
 interface EditorStudioProps {
@@ -51,11 +53,28 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
   onUploadAnother,
 }) => {
   const t = translations[currentLang];
-  const [viewMode, setViewMode] = useState<'slider' | 'side-by-side' | 'single'>('slider');
+  const [viewMode, setViewMode] = useState<'slider' | 'side-by-side' | 'single' | 'brush'>('slider');
   const [sliderPos, setSliderPos] = useState(50);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // Active cutout URL (supports touch-ups & edge refinement)
+  const [activeCutoutUrl, setActiveCutoutUrl] = useState<string>(result?.cutoutUrl || '');
+  const [cutoutHistory, setCutoutHistory] = useState<string[]>([]);
+  const [edgeMode, setEdgeMode] = useState<'natural' | 'crisp' | 'soft'>('natural');
+  const [isDefringed, setIsDefringed] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+
+  // Sync when result changes
+  useEffect(() => {
+    if (result?.cutoutUrl) {
+      setActiveCutoutUrl(result.cutoutUrl);
+      setCutoutHistory([result.cutoutUrl]);
+      setEdgeMode('natural');
+      setIsDefringed(false);
+    }
+  }, [result?.cutoutUrl]);
 
   // Background settings
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>({
@@ -66,20 +85,161 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
   });
 
   // Refine brush state
-  const [isBrushMode, setIsBrushMode] = useState(false);
   const [brushTool, setBrushTool] = useState<'erase' | 'restore'>('erase');
-  const [brushSize, setBrushSize] = useState(25);
-  const [customBgInput, setCustomBgInput] = useState<string | null>(null);
+  const [brushSize, setBrushSize] = useState(28);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
+  });
 
-  // Canvas ref for touch-up
+  // Canvas refs
   const brushCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const originalImgRef = useRef<HTMLImageElement | null>(null);
   const sliderContainerRef = useRef<HTMLDivElement | null>(null);
   const bgUploadInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Cache loaded original image for restore brush
+  useEffect(() => {
+    if (result?.originalUrl) {
+      loadImage(result.originalUrl)
+        .then((img) => {
+          originalImgRef.current = img;
+        })
+        .catch(() => {});
+    }
+  }, [result?.originalUrl]);
+
+  // Redraw brush canvas whenever viewMode switches to brush or active cutout updates
+  useEffect(() => {
+    if (viewMode === 'brush' && brushCanvasRef.current && activeCutoutUrl) {
+      const canvas = brushCanvasRef.current;
+      loadImage(activeCutoutUrl).then((img) => {
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      });
+    }
+  }, [viewMode, activeCutoutUrl]);
+
+  // Interactive Touch-Up Brush handlers
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = brushCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const applyBrushStroke = (x: number, y: number) => {
+    const canvas = brushCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const radius = (brushSize * (canvas.width / 500)) / 2;
+
+    ctx.save();
+    if (brushTool === 'erase') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (brushTool === 'restore' && originalImgRef.current) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(originalImgRef.current, 0, 0, canvas.width, canvas.height);
+    }
+    ctx.restore();
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    const coords = getCanvasCoords(e);
+    applyBrushStroke(coords.x, coords.y);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoords(e);
+    setCursorPos({ x: e.clientX, y: e.clientY, visible: true });
+    if (isDrawing) {
+      applyBrushStroke(coords.x, coords.y);
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = brushCanvasRef.current;
+    if (!canvas) return;
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const newUrl = URL.createObjectURL(blob);
+        setCutoutHistory((prev) => [...prev, newUrl]);
+        setActiveCutoutUrl(newUrl);
+      },
+      'image/png',
+      1.0
+    );
+  };
+
+  // Undo brush stroke
+  const handleUndo = () => {
+    if (cutoutHistory.length > 1) {
+      const nextHistory = cutoutHistory.slice(0, -1);
+      const prevUrl = nextHistory[nextHistory.length - 1];
+      setCutoutHistory(nextHistory);
+      setActiveCutoutUrl(prevUrl);
+    }
+  };
+
+  // Reset to original AI cutout
+  const handleResetToAi = () => {
+    if (result?.cutoutUrl) {
+      setActiveCutoutUrl(result.cutoutUrl);
+      setCutoutHistory([result.cutoutUrl]);
+      setEdgeMode('natural');
+      setIsDefringed(false);
+    }
+  };
+
+  // Edge Refinement & Anti-Halo triggers
+  const handleApplyEdgeRefinement = async (
+    targetMode: 'natural' | 'crisp' | 'soft',
+    targetDefringe: boolean
+  ) => {
+    if (!result?.cutoutUrl) return;
+    setIsRefining(true);
+    setEdgeMode(targetMode);
+    setIsDefringed(targetDefringe);
+
+    try {
+      const baseSource = cutoutHistory[0] || result.cutoutUrl;
+      const refinedUrl = await refineCutoutEdges(baseSource, {
+        mode: targetMode,
+        defringe: targetDefringe,
+      });
+      setActiveCutoutUrl(refinedUrl);
+      setCutoutHistory((prev) => [...prev, refinedUrl]);
+    } catch (err) {
+      console.warn('Edge refinement failed:', err);
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   // Copy toast handler
   const handleCopy = async () => {
-    if (!result) return;
-    const success = await copyImageToClipboard(result.cutoutUrl);
+    if (!activeCutoutUrl) return;
+    const success = await copyImageToClipboard(activeCutoutUrl);
     if (success) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2500);
@@ -88,11 +248,11 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
   // Direct instant download without ads
   const handleDownload = async (format: 'png' | 'jpg') => {
-    if (!result) return;
+    if (!result || !activeCutoutUrl) return;
     setIsDownloading(true);
     try {
       await downloadImage(
-        result.cutoutUrl,
+        activeCutoutUrl,
         result.originalUrl,
         bgSettings,
         result.originalName,
@@ -119,7 +279,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
-      setCustomBgInput(url);
       setBgSettings((prev) => ({
         ...prev,
         mode: 'custom',
@@ -182,11 +341,12 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
     },
   ];
 
+  // PROCESSING HUD SCREEN (Non-blocking, live 60fps laser sweeper)
   if (isProcessing) {
-    // Calculate SVG circle progress
     const radius = 38;
-    const circumference = 2 * Math.PI * radius; // ~238.76
-    const strokeDashoffset = circumference - (circumference * Math.min(100, Math.max(0, progressPercent))) / 100;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset =
+      circumference - (circumference * Math.min(100, Math.max(0, progressPercent))) / 100;
 
     return (
       <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-white via-blue-50/30 to-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
@@ -200,13 +360,11 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
           {/* Interactive Scanning Picture HUD */}
           {uploadingImageUrl ? (
             <div className="relative mx-auto max-w-[280px] sm:max-w-[320px] rounded-2xl overflow-hidden border-2 border-blue-100 shadow-lg group bg-slate-50 checkerboard-pattern">
-              {/* Corner HUD brackets */}
               <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-blue-600 z-20 pointer-events-none" />
               <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-blue-600 z-20 pointer-events-none" />
               <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-blue-600 z-20 pointer-events-none" />
               <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-blue-600 z-20 pointer-events-none" />
 
-              {/* Uploaded Image */}
               <img
                 src={uploadingImageUrl}
                 alt="Scanning..."
@@ -215,21 +373,17 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
               {/* Laser Scanning Beam Sweeper */}
               <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-600 to-transparent shadow-[0_0_16px_#2563eb] animate-laser-scan z-10 pointer-events-none" />
-
-              {/* Subtle Tech Grid Overlay */}
               <div className="absolute inset-0 bg-[linear-gradient(rgba(37,99,235,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(37,99,235,0.05)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none z-10" />
 
-              {/* Status pill over image */}
               <div className="absolute bottom-2.5 inset-x-3 z-20 bg-white/95 backdrop-blur-md py-1.5 px-3 rounded-xl border border-blue-100 shadow-md text-[11px] font-mono text-blue-700 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-semibold">
                   <Cpu className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                  <span>Scanning Pixels...</span>
+                  <span>Processing Ultra-HD Cutout...</span>
                 </span>
                 <span className="font-bold text-blue-600">{progressPercent}%</span>
               </div>
             </div>
           ) : (
-            /* Fallback Circular Ring Icon if image not yet loaded */
             <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-4 border-blue-100 animate-pulse-ring" />
               <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
@@ -242,7 +396,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
           <div className="flex items-center justify-center gap-4 py-1">
             <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
               <svg className="w-20 h-20 -rotate-90 transform" viewBox="0 0 100 100">
-                {/* Background Ring */}
                 <circle
                   cx="50"
                   cy="50"
@@ -251,7 +404,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   strokeWidth="8"
                   fill="transparent"
                 />
-                {/* Dynamic Gradient Progress Ring */}
                 <circle
                   cx="50"
                   cy="50"
@@ -279,10 +431,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </div>
             </div>
 
-            {/* Title & Status */}
             <div className="text-left space-y-1">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>{progressPercent >= 100 ? 'Transparent PNG Ready!' : 'Analyzing Image...'}</span>
+                <span>{progressPercent >= 100 ? 'Transparent PNG Ready!' : 'Analyzing Pixels...'}</span>
                 {progressPercent >= 100 ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-bounce" />
                 ) : (
@@ -290,78 +441,8 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                 )}
               </h3>
               <p className="text-slate-500 text-xs sm:text-sm font-medium leading-snug">
-                {progressStatus || 'Preserving clothes, hair & fine edges...'}
+                {progressStatus || 'Applying sub-pixel alpha matting...'}
               </p>
-            </div>
-          </div>
-
-          {/* Real-time 3-Step Milestones */}
-          <div className="space-y-2.5 text-left bg-slate-50/90 p-4 rounded-2xl border border-slate-200/80">
-            {/* Step 1 */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    progressPercent >= 30
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      : 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
-                  }`}
-                >
-                  {progressPercent >= 30 ? '✓' : '1'}
-                </div>
-                <span className={progressPercent >= 30 ? 'text-slate-800 font-semibold' : 'text-slate-600'}>
-                  Contour & Edge Detection
-                </span>
-              </div>
-              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 30 ? 'text-emerald-600' : 'text-blue-600'}`}>
-                {progressPercent >= 30 ? 'Done' : 'Active'}
-              </span>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    progressPercent >= 85
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      : progressPercent >= 30
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
-                      : 'bg-slate-200/70 text-slate-500'
-                  }`}
-                >
-                  {progressPercent >= 85 ? '✓' : '2'}
-                </div>
-                <span className={progressPercent >= 85 ? 'text-slate-800 font-semibold' : progressPercent >= 30 ? 'text-blue-700 font-semibold' : 'text-slate-400'}>
-                  AI Clothes & Hair Segmentation
-                </span>
-              </div>
-              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 85 ? 'text-emerald-600' : progressPercent >= 30 ? 'text-blue-600' : 'text-slate-400'}`}>
-                {progressPercent >= 85 ? 'Done' : progressPercent >= 30 ? 'Processing' : 'Waiting'}
-              </span>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    progressPercent >= 100
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      : progressPercent >= 85
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300 animate-pulse'
-                      : 'bg-slate-200/70 text-slate-500'
-                  }`}
-                >
-                  {progressPercent >= 100 ? '✓' : '3'}
-                </div>
-                <span className={progressPercent >= 100 ? 'text-emerald-700 font-bold' : progressPercent >= 85 ? 'text-blue-700 font-semibold' : 'text-slate-400'}>
-                  Transparent PNG Extraction
-                </span>
-              </div>
-              <span className={`text-[11px] font-mono font-semibold ${progressPercent >= 100 ? 'text-emerald-600' : progressPercent >= 85 ? 'text-blue-600' : 'text-slate-400'}`}>
-                {progressPercent >= 100 ? 'Complete' : progressPercent >= 85 ? 'Extracting' : 'Waiting'}
-              </span>
             </div>
           </div>
 
@@ -369,11 +450,10 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
           {progressPercent >= 100 && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-bold flex items-center justify-center gap-2 animate-in fade-in duration-200">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>100% Complete! Opening in Transparent Editor...</span>
+              <span>100% Complete! Opening in Transparent Studio...</span>
             </div>
           )}
 
-          {/* Bottom Cancel / Back Button */}
           <div className="pt-1">
             <button
               type="button"
@@ -421,7 +501,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={onUploadAnother}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors"
+            className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors cursor-pointer"
           >
             {t.editor.uploadAnother}
           </button>
@@ -429,7 +509,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
           <button
             onClick={handleCopy}
             disabled={isCopied}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-xl transition-all shadow-2xs"
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer"
           >
             {isCopied ? (
               <>
@@ -444,7 +524,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
             )}
           </button>
 
-          {/* Download JPG with selected background */}
           {bgSettings.mode !== 'transparent' && (
             <button
               onClick={() => handleDownload('jpg')}
@@ -456,7 +535,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
             </button>
           )}
 
-          {/* Primary Download HD PNG */}
           <button
             onClick={() => handleDownload('png')}
             disabled={isDownloading}
@@ -470,17 +548,11 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
       {/* Main Workspace: Canvas Stage + Controls Sidebar */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
-        
         {/* PREVIEW STAGE (8 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col space-y-3">
-          
-          {/* Main Card Container: Contains internal toolbar (View Mode + Zoom & Reset) and Canvas */}
           <div className="w-full bg-white rounded-3xl border border-slate-200 p-3 sm:p-5 shadow-sm overflow-hidden flex flex-col space-y-3">
-            
-            {/* Top Toolbar INSIDE THE CARD: View Mode on left, Zoom & Reset on right */}
+            {/* Top Toolbar: View Mode & Touch-up Brush */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-              
-              {/* View Mode buttons */}
               <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl">
                 <button
                   onClick={() => setViewMode('slider')}
@@ -520,9 +592,22 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   <span className="hidden sm:inline">{t.editor.onlyCutout}</span>
                   <span className="sm:hidden">Cutout</span>
                 </button>
+
+                {/* Touch-up Brush Toggle */}
+                <button
+                  onClick={() => setViewMode(viewMode === 'brush' ? 'slider' : 'brush')}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'brush'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
+                  }`}
+                >
+                  <Paintbrush className="w-3.5 h-3.5" />
+                  <span>Touch-Up Brush</span>
+                </button>
               </div>
 
-              {/* Zoom Controls & Reset Button — INSIDE the card, fully responsive */}
+              {/* Zoom & Reset Toolbar */}
               <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl">
                 <button
                   onClick={() => setZoomLevel((z) => Math.max(0.6, Number((z - 0.2).toFixed(1))))}
@@ -555,9 +640,80 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </div>
             </div>
 
+            {/* Brush Controls Bar (Visible only when in Brush mode) */}
+            {viewMode === 'brush' && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-blue-50/70 border border-blue-200/80 rounded-2xl animate-in fade-in duration-150">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setBrushTool('erase')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      brushTool === 'erase'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                    <span>Erase Background</span>
+                  </button>
+
+                  <button
+                    onClick={() => setBrushTool('restore')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      brushTool === 'restore'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    <Paintbrush className="w-3.5 h-3.5" />
+                    <span>Restore Subject</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-600">Size: {brushSize}px</span>
+                    <input
+                      type="range"
+                      min="8"
+                      max="75"
+                      value={brushSize}
+                      onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                      className="w-24 accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="h-4 w-px bg-blue-200" />
+
+                  <button
+                    onClick={handleUndo}
+                    disabled={cutoutHistory.length <= 1}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    <span>Undo</span>
+                  </button>
+
+                  <button
+                    onClick={handleResetToAi}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewMode('slider')}
+                    className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-xs cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Done</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Canvas Stage */}
             <div className="w-full rounded-2xl bg-slate-50/70 border border-slate-100 p-2 sm:p-4 flex items-center justify-center min-h-[300px] sm:min-h-[420px] max-h-[520px] overflow-hidden">
-              
               {/* 1. SLIDER MODE */}
               {viewMode === 'slider' && (
                 <div
@@ -568,7 +724,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
                   className="relative max-w-full max-h-[360px] sm:max-h-[480px] rounded-2xl overflow-hidden cursor-ew-resize select-none shadow-md checkerboard-pattern transition-transform duration-100"
                 >
-                  {/* Background Layer with chosen settings */}
                   <div
                     className={`w-full h-full relative overflow-hidden flex items-center justify-center ${
                       bgSettings.mode === 'gradient'
@@ -579,7 +734,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
                     }}
                   >
-                    {/* Custom Backdrop Image */}
                     {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
                       <img
                         src={bgSettings.customImageUrl}
@@ -588,7 +742,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       />
                     )}
 
-                    {/* DSLR Blur mode */}
                     {bgSettings.mode === 'blur' && (
                       <img
                         src={result.originalUrl}
@@ -598,15 +751,13 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       />
                     )}
 
-                    {/* Cutout foreground */}
                     <img
-                      src={result.cutoutUrl}
+                      src={activeCutoutUrl}
                       alt="Foreground Cutout"
                       className="block max-h-[340px] sm:max-h-[460px] w-auto object-contain mx-auto pointer-events-none relative z-10"
                     />
                   </div>
 
-                  {/* Original Layer overlay clipped to slider position */}
                   <div
                     className="absolute inset-0 overflow-hidden pointer-events-none z-20"
                     style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
@@ -618,7 +769,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                     />
                   </div>
 
-                  {/* Divider Line & Handle */}
                   <div
                     className="absolute top-0 bottom-0 w-1 bg-white shadow-xl pointer-events-none z-30"
                     style={{ left: `${sliderPos}%` }}
@@ -632,11 +782,10 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
 
               {/* 2. SIDE-BY-SIDE MODE */}
               {viewMode === 'side-by-side' && (
-                <div 
+                <div
                   style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
                   className="w-full flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
                 >
-                  {/* Original */}
                   <div className="flex-1 max-w-[320px] bg-slate-100 rounded-2xl p-2 shadow-xs border border-slate-200">
                     <div className="relative rounded-xl overflow-hidden aspect-[3/4] bg-slate-200 flex items-center justify-center">
                       <img
@@ -647,7 +796,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                     </div>
                   </div>
 
-                  {/* Cutout */}
                   <div className="flex-1 max-w-[320px] bg-slate-100 rounded-2xl p-2 shadow-xs border border-slate-200">
                     <div
                       className={`relative rounded-xl overflow-hidden aspect-[3/4] checkerboard-pattern flex items-center justify-center ${
@@ -659,7 +807,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                         backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
                       }}
                     >
-                      {/* Custom Backdrop Image */}
                       {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
                         <img
                           src={bgSettings.customImageUrl}
@@ -668,7 +815,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                         />
                       )}
 
-                      {/* DSLR Blur */}
                       {bgSettings.mode === 'blur' && (
                         <img
                           src={result.originalUrl}
@@ -679,7 +825,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       )}
 
                       <img
-                        src={result.cutoutUrl}
+                        src={activeCutoutUrl}
                         alt="Cutout"
                         className="w-full h-full object-contain relative z-1"
                       />
@@ -704,7 +850,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       backgroundColor: bgSettings.mode === 'color' ? bgSettings.color : undefined,
                     }}
                   >
-                    {/* Custom Backdrop Image */}
                     {bgSettings.mode === 'custom' && bgSettings.customImageUrl && (
                       <img
                         src={bgSettings.customImageUrl}
@@ -713,7 +858,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                       />
                     )}
 
-                    {/* DSLR Blur */}
                     {bgSettings.mode === 'blur' && (
                       <img
                         src={result.originalUrl}
@@ -724,7 +868,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                     )}
 
                     <img
-                      src={result.cutoutUrl}
+                      src={activeCutoutUrl}
                       alt="Cutout Preview"
                       className="block max-h-[340px] sm:max-h-[460px] w-auto object-contain mx-auto relative z-1"
                     />
@@ -732,20 +876,110 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                 </div>
               )}
 
+              {/* 4. TOUCH-UP BRUSH INTERACTIVE CANVAS */}
+              {viewMode === 'brush' && (
+                <div
+                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                  className="relative max-w-full max-h-[360px] sm:max-h-[480px] rounded-2xl overflow-hidden checkerboard-pattern shadow-md cursor-crosshair select-none"
+                >
+                  <canvas
+                    ref={brushCanvasRef}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={() => setCursorPos((p) => ({ ...p, visible: false }))}
+                    className="block max-h-[340px] sm:max-h-[460px] w-auto h-auto object-contain mx-auto touch-none"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
           <p className="text-center text-xs text-slate-400">
-            {viewMode === 'slider' ? 'Drag slider left/right to inspect precision edge cutoff' : '100% transparent alpha channel preserved'}
+            {viewMode === 'brush'
+              ? 'Paint with Erase to clear unwanted spots, or Restore to recover subject parts'
+              : viewMode === 'slider'
+              ? 'Drag slider left/right to inspect precision edge cutoff'
+              : '100% transparent lossless alpha channel preserved'}
           </p>
         </div>
 
-        {/* CONTROLS SIDEBAR (4 cols on desktop, right below canvas on mobile with zero long scrolling) */}
+        {/* CONTROLS SIDEBAR */}
         <div className="lg:col-span-4 space-y-4">
-          
+          {/* ADVANCED EDGE QUALITY & CLEAN HALO PANEL */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                <Scissors className="w-4 h-4 text-blue-600" />
+                <span>Edge & Detail Quality</span>
+              </h3>
+              {isRefining && <Sparkles className="w-4 h-4 text-blue-600 animate-spin" />}
+            </div>
+
+            {/* Edge sharpness profile */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 block">Cutout Edge Contour:</span>
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-2xl text-xs font-semibold">
+                <button
+                  onClick={() => handleApplyEdgeRefinement('crisp', isDefringed)}
+                  className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
+                    edgeMode === 'crisp'
+                      ? 'bg-white text-blue-600 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Crisp Cut
+                </button>
+                <button
+                  onClick={() => handleApplyEdgeRefinement('natural', isDefringed)}
+                  className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
+                    edgeMode === 'natural'
+                      ? 'bg-white text-blue-600 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Natural AI
+                </button>
+                <button
+                  onClick={() => handleApplyEdgeRefinement('soft', isDefringed)}
+                  className={`py-2 px-1 rounded-xl transition-all text-center cursor-pointer ${
+                    edgeMode === 'soft'
+                      ? 'bg-white text-blue-600 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Soft & Hair
+                </button>
+              </div>
+            </div>
+
+            {/* Clean border halo (De-fringe) button */}
+            <button
+              onClick={() => handleApplyEdgeRefinement(edgeMode, !isDefringed)}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-xs font-semibold cursor-pointer ${
+                isDefringed
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                    isDefringed ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'
+                  }`}
+                >
+                  {isDefringed ? '✓' : ''}
+                </div>
+                <span>Clean White Border Glow (De-Fringe)</span>
+              </div>
+              <span className="text-[11px] font-mono font-bold text-blue-600">
+                {isDefringed ? 'Active' : 'Apply'}
+              </span>
+            </button>
+          </div>
+
           {/* Background Customizer Card */}
           <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
-            
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
                 <span>{t.editor.backgroundPresets}</span>
@@ -755,7 +989,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </span>
             </div>
 
-            {/* Mode selection buttons: 5 intuitive tabs */}
+            {/* Mode selection buttons */}
             <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-2xl text-[11px] sm:text-xs font-semibold">
               <button
                 onClick={() => setBgSettings((s) => ({ ...s, mode: 'transparent' }))}
@@ -845,7 +1079,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   ))}
                 </div>
 
-                {/* Custom HEX picker */}
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                   <input
                     type="color"
@@ -890,11 +1123,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </div>
             )}
 
-            {/* TAB CONTENT: 4. CUSTOM PHOTO BACKDROP (FIXED & 100% FUNCTIONAL) */}
+            {/* TAB CONTENT: 4. CUSTOM PHOTO BACKDROP */}
             {bgSettings.mode === 'custom' && (
               <div className="space-y-3">
-                
-                {/* Upload Button */}
                 <input
                   type="file"
                   ref={bgUploadInputRef}
@@ -902,7 +1133,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   accept="image/*"
                   className="hidden"
                 />
-                
+
                 <button
                   onClick={() => bgUploadInputRef.current?.click()}
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-500 text-blue-700 text-xs font-bold transition-all cursor-pointer"
@@ -911,7 +1142,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   <span>Upload Photo from Device</span>
                 </button>
 
-                {/* If custom photo is active */}
                 {bgSettings.customImageUrl && (
                   <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl">
                     <img
@@ -925,7 +1155,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                         <span>Backdrop Applied</span>
                       </p>
                       <button
-                        onClick={() => setBgSettings((s) => ({ ...s, mode: 'transparent', customImageUrl: undefined }))}
+                        onClick={() =>
+                          setBgSettings((s) => ({ ...s, mode: 'transparent', customImageUrl: undefined }))
+                        }
                         className="text-[11px] text-red-500 hover:text-red-700 underline font-medium cursor-pointer"
                       >
                         Remove Backdrop
@@ -934,7 +1166,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                   </div>
                 )}
 
-                {/* Quick 1-tap Photo Presets */}
                 <div className="pt-2">
                   <p className="text-[11px] font-semibold text-slate-500 mb-2">
                     Or select a pre-made backdrop:
@@ -970,7 +1201,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                     ))}
                   </div>
                 </div>
-
               </div>
             )}
 
@@ -996,7 +1226,6 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
                 </p>
               </div>
             )}
-
           </div>
 
           {/* Quick Download Summary Card */}
@@ -1007,7 +1236,9 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               </div>
               <div className="min-w-0">
                 <h4 className="font-bold text-white text-sm truncate">HD Export Ready</h4>
-                <p className="text-blue-100 text-xs font-mono">{result.width} × {result.height} px</p>
+                <p className="text-blue-100 text-xs font-mono">
+                  {result.width} × {result.height} px
+                </p>
               </div>
             </div>
 
@@ -1045,9 +1276,7 @@ export const EditorStudio: React.FC<EditorStudioProps> = ({
               100% Free • High-Resolution • No Watermark
             </p>
           </div>
-
         </div>
-
       </div>
     </div>
   );

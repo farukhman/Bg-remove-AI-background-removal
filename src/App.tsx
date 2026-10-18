@@ -62,11 +62,13 @@ export default function App() {
       return '100% Complete! Transparent PNG Ready';
     };
 
+    let targetPct = 15;
+    let currentPct = 1;
+    let isTaskDone = false;
     let processedData: ProcessedResult | null = null;
     let processingError: Error | null = null;
 
-    // Start actual background removal task in parallel while counter smoothly increments 1, 2, 3...
-    let isTaskDone = false;
+    // Start background removal worker in parallel
     const workPromise = (async () => {
       if (preCutoutUrl) {
         try {
@@ -84,16 +86,19 @@ export default function App() {
             height: img.naturalHeight || img.height,
             originalName: (name || 'sample').replace(/\.[^/.]+$/, ''),
           };
+          targetPct = 100;
           isTaskDone = true;
           return;
         } catch (e) {
-          console.warn('Pre-cutout load failed, running neural model:', e);
+          console.warn('Pre-cutout load failed, running local engine:', e);
         }
       }
 
       processedData = await processBackgroundRemoval(fileOrUrl, name || 'image', (pct, status) => {
+        targetPct = Math.max(targetPct, pct);
         if (status) setProgressStatus(status);
       });
+      targetPct = 100;
       isTaskDone = true;
     })().catch((err: any) => {
       isTaskDone = true;
@@ -101,30 +106,49 @@ export default function App() {
     });
 
     try {
-      let currentPct = 1;
+      const startTime = Date.now();
 
       while (currentPct < 100) {
-        if (processingError) {
-          throw processingError;
+        if (processingError) throw processingError;
+
+        // Safety timeout of 12s so it never stays stuck indefinitely
+        if (Date.now() - startTime > 12000 && !isTaskDone) {
+          throw new Error('Processing timed out. Please try again with another image.');
         }
 
-        // Uniform, non-sticking pace from 1% to 100% — never slows down or pauses mid-way!
-        // Speeds up smoothly as soon as the cutout task finishes.
-        const stepDelayMs = isTaskDone && processedData ? 6 : 18;
+        // Cap at 94% until the cutout task is 100% resolved
+        const maxAllowed = isTaskDone ? 100 : 94;
+        const effectiveTarget = Math.min(maxAllowed, targetPct);
 
-        await new Promise((resolve) => setTimeout(resolve, stepDelayMs));
-        currentPct += 1;
-        setProgressPercent(currentPct);
-        setProgressStatus(getStatusForPercent(currentPct));
+        if (currentPct < effectiveTarget) {
+          const delta = effectiveTarget - currentPct;
+          const step = Math.max(1, Math.ceil(delta * (isTaskDone ? 0.35 : 0.16)));
+          currentPct = Math.min(effectiveTarget, currentPct + step);
+        } else if (!isTaskDone && currentPct < 93) {
+          currentPct += 0.15;
+        }
+
+        const displayPct = Math.min(100, Math.floor(currentPct));
+        setProgressPercent(displayPct);
+        setProgressStatus(getStatusForPercent(displayPct));
+
+        if (isTaskDone && currentPct >= 100) {
+          break;
+        }
+
+        await new Promise((r) => setTimeout(r, 18));
       }
 
-      // If at 100% and final PNG blob is wrapping up, wait briefly at 100% before opening editor
       if (!isTaskDone) {
         await workPromise;
       }
-      if (processingError) {
-        throw processingError;
-      }
+      if (processingError) throw processingError;
+
+      setProgressPercent(100);
+      setProgressStatus('100% Complete! Transparent PNG Ready');
+
+      // Brief celebratory display of 100% checkmark before opening studio
+      await new Promise((r) => setTimeout(r, 160));
 
       if (processedData) {
         setResult(processedData);
